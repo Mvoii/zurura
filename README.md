@@ -1,1 +1,2 @@
-# _placeholder_
+# zurura
+## the repo for the safiri app
