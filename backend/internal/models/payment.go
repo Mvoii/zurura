@@ -10,4 +10,5 @@ type Payment struct {
 	PaymentStatus string    `json:"payment_status" db:"payment_status"`
 	TransactionID string    `json:"transaction_id" db:"transaction_id"`
 	CreatedAt     time.Time `json:"created_at" db:"created_at"`
+	ExpiresAt	  time.Time	`json:"expires_at" db:"expires_at"`		// for subscription passes
 }
