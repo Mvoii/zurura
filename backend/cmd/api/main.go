@@ -15,7 +15,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: .env file not found")
+		log.Printf("Warning: .env file not found\n env file should contain:\n DATABASE_URI\n JWT_SECRET\n PORT\n")
 	}
 
 	db, err := db.NewPostgresDB()
@@ -28,20 +28,39 @@ func main() {
 
 	// init handlers
 	authHandler := handlers.NewAuthHandler(db)
+	userHandler := handlers.NewUserHandler(db)
+	//bussHandler := handlers
+	//routeHandler :=
+	//trackingHandler :=
+	// bookingHandler :=
+	// paymentHander :=
+	// operatorHandler :=
+
+	// middleware
+	r.Use(middleware.CORS())
 
 	// public routes
-	r.POST("/api/v1/auth/login", authHandler.Login)
+	public := r.Group("/a/v1/")
+	{
+		// auth
+		public.POST("/auth/login", authHandler.Login)
+		public.POST("/auth/register", authHandler.Register)
+	}
+
+	// r.POST("/api/v1/auth/login", authHandler.Login)
 
 	// protected routes
-	protected := r.Group("/api")
-	protected.Use(middleware.AuthMiddleware())
+	protected := r.Group("/a/v1/")
+	protected.Use(middleware.AuthRequired())
 	{
-		// add protected routes
+		// User profile
+		protected.GET("/users/profile", userHandler.GetProfile)
+		// protected.PUT("/users/profile", userHandler.UpdateProfile)
 	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080"
+		port = "8050"
 	}
 
 	if err := r.Run(":" + port); err != nil {
