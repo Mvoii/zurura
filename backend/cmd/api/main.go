@@ -37,33 +37,42 @@ func main() {
 	// operatorHandler :=
 
 	// middleware
-	r.Use(middleware.CORS())
+	r.Use(
+		middleware.CORS(),
+		gin.Recovery(),
+	)
 
 	// public routes
-	public := r.Group("/a/v1/")
+	api := r.Group("/a/v1")
 	{
-		// auth
-		public.POST("/auth/login", authHandler.Login)
-		public.POST("/auth/register", authHandler.Register)
+		public := api.Group("/")
+		{
+			public.POST("/auth/login", authHandler.Login)
+			public.POST("/auth/register", authHandler.Register)
+		}
+
+		// protected routes
+		protected := api.Group("/")
+		protected.Use(middleware.AuthRequired())
+		{
+			// User profile
+			protected.GET("/users/profile", userHandler.GetProfile)
+			// protected.PUT("/users/profile", userHandler.UpdateProfile)
+		}
 	}
 
-	// r.POST("/api/v1/auth/login", authHandler.Login)
-
-	// protected routes
-	protected := r.Group("/a/v1/")
-	protected.Use(middleware.AuthRequired())
-	{
-		// User profile
-		protected.GET("/users/profile", userHandler.GetProfile)
-		// protected.PUT("/users/profile", userHandler.UpdateProfile)
-	}
+	// Health check
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8050"
+		port = "8080"
 	}
 
+	log.Printf("Starting server on :%s", port)
 	if err := r.Run(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
