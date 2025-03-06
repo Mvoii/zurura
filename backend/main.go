@@ -1,14 +1,18 @@
 package main
 
 import (
-    "log"
-    "net/http"
-    "os"
+	"context"
+	"log"
 
-    "github.com/joho/godotenv"
-    // "github.com/yourusername/msafiri/internal/infrastructure/database"
-    // "github.com/yourusername/msafiri/internal/infrastructure/repository/postgres"
-    // "github.com/yourusername/msafiri/internal/application/service"
-    // "github.com/yourusername/msafiri/internal/interfaces/http/handlers"
-    // "github.com/yourusername/msafiri/internal/interfaces/http/router"
+	"github.com/yourusername/msafiri/internal/db"
 )
+
+func main() {
+	conn, err := db.NewPostgresDB(context.Background())
+	if err != nil {
+		log.Fatalf("Failed to connect to the database: %v", err)
+	}
+	defer conn.Close(context.Background())
+
+	log.Println("Connected to database successfully")
+}
