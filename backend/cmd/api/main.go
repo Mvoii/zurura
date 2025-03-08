@@ -15,7 +15,7 @@ import (
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: .env file not found")
+		log.Printf("Warning: .env file not found\n env file should contain:\n DATABASE_URI\n JWT_SECRET\n PORT\n")
 	}
 
 	db, err := db.NewPostgresDB()
@@ -28,23 +28,51 @@ func main() {
 
 	// init handlers
 	authHandler := handlers.NewAuthHandler(db)
+	userHandler := handlers.NewUserHandler(db)
+	//bussHandler := handlers
+	//routeHandler :=
+	//trackingHandler :=
+	// bookingHandler :=
+	// paymentHander :=
+	// operatorHandler :=
+
+	// middleware
+	r.Use(
+		middleware.CORS(),
+		gin.Recovery(),
+	)
 
 	// public routes
-	r.POST("/api/v1/auth/login", authHandler.Login)
-
-	// protected routes
-	protected := r.Group("/api")
-	protected.Use(middleware.AuthMiddleware())
+	api := r.Group("/a/v1")
 	{
-		// add protected routes
+		public := api.Group("/")
+		{
+			public.POST("/auth/login", authHandler.Login)
+			public.POST("/auth/register", authHandler.Register)
+		}
+
+		// protected routes
+		protected := api.Group("/")
+		protected.Use(middleware.AuthRequired())
+		{
+			// User profile
+			protected.GET("/users/profile", userHandler.GetProfile)
+			// protected.PUT("/users/profile", userHandler.UpdateProfile)
+		}
 	}
+
+	// Health check
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "ok"})
+	})
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
+	log.Printf("Starting server on :%s", port)
 	if err := r.Run(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
