@@ -56,7 +56,7 @@ func main() {
 		protected.Use(middleware.AuthRequired())
 		{
 			// User profile
-			protected.GET("/users/profile", userHandler.GetProfile)
+			protected.GET("/me/profile", userHandler.GetProfile)
 			// protected.PUT("/users/profile", userHandler.UpdateProfile)
 		}
 	}

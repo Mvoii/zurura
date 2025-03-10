@@ -22,14 +22,14 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	var user models.User
 	query := `
-		SELECT id, email, first_name, last_name, school_id, created_at, updated_at
+		SELECT id, email, first_name, last_name, school_name, created_at, updated_at
 		FROM users
 		WHERE id = $1
 	`
 
 	err := h.db.QueryRow(query, userID).Scan(
 		&user.ID, &user.Email, &user.FirstName, &user.LastName,
-		&user.SchoolID, &user.CreatedAt, &user.UpdatedAt,
+		&user.SchoolName, &user.CreatedAt, &user.UpdatedAt,
 	)
 
 	if err != nil {

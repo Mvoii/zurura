@@ -15,7 +15,7 @@ type Location struct {
 	Latitude  float64   `json:"latitude"`
 	Longitude float64   `json:"longitude"`
 	Speed     float64   `json:"speed"`
-	Heading   float64   `json:"heading"`
+	Direction float64   `json:"direction"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
@@ -58,7 +58,7 @@ func (s *Service) UpdateBusLocation(loc Location) error {
 		VALUES ($1, $2, $3, $4, $5, $6, NOW())
 	`
 
-	_, err := s.db.Exec(query, loc.BusID, loc.Latitude, loc.Longitude, loc.Speed, loc.Heading, loc.Timestamp)
+	_, err := s.db.Exec(query, loc.BusID, loc.Latitude, loc.Longitude, loc.Speed, loc.Direction, loc.Timestamp)
 	if err != nil {
 		log.Printf("Error savin bus location: %v", err)
 		return err
@@ -89,7 +89,7 @@ func (s *Service) GetBusLocation(busID string) (Location, error) {
 
 	var dbLoc Location
 	err := s.db.QueryRow(query, busID).Scan(
-		&dbLoc.BusID, &dbLoc.Latitude, &dbLoc.Longitude, &dbLoc.Speed, &dbLoc.Heading, &dbLoc.Timestamp,
+		&dbLoc.BusID, &dbLoc.Latitude, &dbLoc.Longitude, &dbLoc.Speed, &dbLoc.Direction, &dbLoc.Timestamp,
 	)
 
 	if err != nil {
@@ -142,7 +142,7 @@ func (s *Service) GetNearbyBuses(lat, lng float64, radiusKM float64) ([]Location
 	var buses []Location
 	for rows.Next() {
 		var loc Location
-		if err := rows.Scan(&loc.BusID, &loc.Latitude, &loc.Longitude, &loc.Speed, &loc.Heading, &loc.Timestamp); err != nil {
+		if err := rows.Scan(&loc.BusID, &loc.Latitude, &loc.Longitude, &loc.Speed, &loc.Direction, &loc.Timestamp); err != nil {
 			return nil, err
 		}
 
