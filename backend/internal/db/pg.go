@@ -19,6 +19,7 @@ func NewPostgresDB() (*sql.DB, error) {
 		os.Getenv("DB_NAME"),
 	)
 
+	//conn_str := fmt.Sprint("uri=%s", os.Getenv("DB_URI"))
 	db, err := sql.Open("postgres", conn_str)
 	if err != nil {
 		return nil, fmt.Errorf("error opening db: %w", err)

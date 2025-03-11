@@ -16,7 +16,7 @@ func NewMPesaService() *MPesaService {
 	return &MPesaService{
 		baseURL:        os.Getenv("MPESA_BASE_URL"),
 		consumerKey:    os.Getenv("MPESA_CONSUMER_KEY"),
-		consumerSecret: os.Getenv("MPESA_COSNUMER_SECRET"),
+		consumerSecret: os.Getenv("MPESA_CONSUMER_SECRET"),
 		passKey:        os.Getenv("MPESA_PASS_KEY"),
 		shortCode:      os.Getenv("MPESA_SHORT_CODE"),
 		callbackUrl:    os.Getenv("MPESA_CALLBACK_URL"),
