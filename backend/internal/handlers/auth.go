@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/Mvoii/zurura/internal/models"
@@ -69,6 +70,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"email":       user.Email,
 		"school_name": user.SchoolName,
 		"exp":         time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
+		"jti":         uuid.New().String(),
 	})
 
 	tokenStr, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -117,7 +119,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	userID := generateUUID()
+	userID := uuid.New()
 
 	insertQuery := `
 		INSERT INTO users (id, email, password_hash, first_name, last_name, school_name)
@@ -135,7 +137,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		"user_id":     userID,
 		"email":       req.Email,
 		"school_name": req.SchoolName,
-		"exp":         time.Now().Add(time.Hour * 24 * 7).Unix(),
+		"exp":         time.Now().Add(time.Hour * 24 * 1).Unix(),
+		"jti":         uuid.New().String(),
 	})
 
 	tokStr, err := tok.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -156,7 +159,57 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	})
 }
 
+func (h *AuthHandler) Logout(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Missing token"})
+		return
+	}
+
+	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenStr == authHeader {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+		return
+	}
+
+	token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil || !token.Valid {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+		return
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
+		return
+	}
+
+	// add to black list
+	jti, jtiExists := claims["jti"].(string)
+	exp, expExists := claims["exp"].(float64)
+	if !jtiExists || !expExists {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Token missing required claims"})
+		return
+	}
+
+	expiresAt := time.Unix(int64(exp), 0)
+	_, err = h.db.Exec(`
+		INSERT INTO token_blacklist (jti, token, expires_at)
+		VALUES ($1, $2, $3)
+		ON CONFLICT (jti) DO NOTHING`, // prevent duplicates
+		jti, tokenStr, expiresAt,
+	)
+
+	if err != nil {
+		log.Printf("Failed to blacklist tok: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to log out"})
+	}
+}
+
 // helpers
-func generateUUID() string {
+/* func generateUUID() string {
 	return uuid.New().String()
 }
+*/

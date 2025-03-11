@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/Mvoii/zurura/internal/db"
 	"github.com/Mvoii/zurura/internal/handlers"
@@ -23,6 +24,21 @@ func main() {
 		log.Fatal("Failed to connect to database:", err)
 	}
 	defer db.Close()
+
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			_, err := db.Exec(`
+				DELETE FROM token_blacklist
+				WHERE expires_at < NOW() - INTERVAL '2 days'
+			`)
+			if err != nil {
+				log.Printf("failed to clean up expired toks: %v", err)
+			}
+		}
+	}()
 
 	r := gin.Default()
 
@@ -53,11 +69,19 @@ func main() {
 
 		// protected routes
 		protected := api.Group("/")
-		protected.Use(middleware.AuthRequired())
+		protected.Use(middleware.AuthRequired(db))
 		{
+			protected.POST("/auth/logout", authHandler.Logout)
 			// User profile
 			protected.GET("/me/profile", userHandler.GetProfile)
 			// protected.PUT("/users/profile", userHandler.UpdateProfile)
+		}
+
+		protected.Use(middleware.OperatorAuthRequired(db))
+		{
+			protected.POST("/op/buses", operatorHandler.AddBus)
+			protected.PUT("/op/buses/:id", operatorHander.UpdateBus)
+			protected.GET("/op/buses", operatorHander.ListBuses)
 		}
 	}
 
