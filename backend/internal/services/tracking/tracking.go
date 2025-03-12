@@ -21,7 +21,7 @@ type Location struct {
 
 type Service struct {
 	db        *sql.DB
-	locations map[string]Location
+	locations map[string]Location // in mem cache
 	mu        sync.RWMutex
 }
 
@@ -39,13 +39,11 @@ func NewTrackingService(db *sql.DB) *Service {
 }
 
 func (s *Service) UpdateBusLocation(loc Location) error {
-	if loc.BusID == "" {
-		return errors.New("bus ID required")
+	if err := s.validateLocation(loc); err != nil {
+		return err
 	}
 
-	if loc.Timestamp.IsZero() {
-		loc.Timestamp = time.Now()
-	}
+	loc.Timestamp = time.Now()
 
 	// store in mem cache
 	s.mu.Lock()
@@ -54,33 +52,33 @@ func (s *Service) UpdateBusLocation(loc Location) error {
 
 	// persit to db
 	query := `
-		INSERT INTO bus_locations (bus_id, latitude, longitude, speed, heading, timestamp, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6, NOW())
+		INSERT INTO bus_locations (bus_id, latitude, longitude, speed, direction, timestamp)
+		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 
 	_, err := s.db.Exec(query, loc.BusID, loc.Latitude, loc.Longitude, loc.Speed, loc.Direction, loc.Timestamp)
 	if err != nil {
-		log.Printf("Error savin bus location: %v", err)
+		log.Printf("Error saving bus location: %v", err)
 		return err
 	}
 
 	return nil
 }
 
-func (s *Service) GetBusLocation(busID string) (Location, error) {
+func (s *Service) GetLiveLocation(busID string) (Location, error) {
 	// first look in mem cache
 	s.mu.RLock()
-	loc, exists := s.locations[busID]
+	cachedLoc, exists := s.locations[busID]
 	s.mu.RUnlock()
 
 	if exists {
-		if time.Since(loc.Timestamp) < time.Minute*2 {
-			return loc, nil
+		if time.Since(cachedLoc.Timestamp) < time.Minute*2 {
+			return cachedLoc, nil
 		}
 	}
 
 	query := `
-		SELECT bus_id, latitude, longitude, speed, heading, timestamp
+		SELECT bus_id, latitude, longitude, speed, direction, timestamp
 		FROM bus_locations
 		WHERE bus_id = $1
 		ORDER BY timestamp DESC
@@ -110,7 +108,7 @@ func (s *Service) GetBusLocation(busID string) (Location, error) {
 func (s *Service) GetNearbyBuses(lat, lng float64, radiusKM float64) ([]Location, error) {
 	// using haversine formula to calculate distances
 	// in prod use POSTGIS
-	query := `
+	/* query := `
 		SELECT
 			b.id,
 			bl.latitude,
@@ -131,6 +129,17 @@ func (s *Service) GetNearbyBuses(lat, lng float64, radiusKM float64) ([]Location
 			-- in prod use proper gis functions
 			(bl.latitude BETWEEN $1 - ($3 / 111.0) AND $1 + ($3/ 111.0)) AND
 			(bl.longitude BETWEEN $2 - ($3 / (111.0 * COS(RADIANS($1)))) AND $2 + ($3 / (111.0 * COS(RADIANS($1)))))
+	` */
+	query := `
+		SELECT bus_id, latitude, longitude, speed, direction, timestamp
+		FROM bus_locations
+		WHERE ST_DWithin(
+			geolocation,
+			ST_SetSRID(ST_MakePoint($1, $2), 4326),
+			$3
+		)
+		AND timestamp > NOW() - INTERVAL '5 minutes'
+		ORDER BY timestamp DESC
 	`
 
 	rows, err := s.db.Query(query, lat, lng, radiusKM)
@@ -171,10 +180,42 @@ func (s *Service) cleanStaleLocations() {
 // validate location coordinates
 func (s *Service) validateLocation(loc Location) error {
 	if loc.Latitude < -90 || loc.Latitude > 90 {
-		return errors.New("Invalid latitude")
+		return errors.New("invalid latitude")
 	}
 	if loc.Longitude < -180 || loc.Longitude > 180 {
-		return errors.New("Invalid longitude")
+		return errors.New("invalid longitude")
 	}
 	return nil
+}
+
+// eta calculation
+func (s *Service) CalculateETA(busID string, destLat, destLng float64) (time.Duration, error) {
+	// Get current location
+	loc, err := s.GetLiveLocation(busID)
+	if err != nil {
+		return 0, err
+	}
+
+	// Get distance using PostGIS
+	var distanceMeters float64
+	err = s.db.QueryRow(`
+		SELECT ST_Distance(
+			ST_SetSRID(ST_MakePoint($1, $2), 
+			ST_SetSRID(ST_MakePoint($3, $4)
+		)`,
+		loc.Longitude, loc.Latitude, destLng, destLat,
+	).Scan(&distanceMeters)
+
+	if err != nil {
+		return 0, err
+	}
+
+	// Calculate time (distance meters / (speed m/s))
+	speedMps := loc.Speed * 1000 / 3600 // Convert km/h to m/s
+	if speedMps <= 0 {
+		return 0, errors.New("bus not moving")
+	}
+
+	seconds := distanceMeters / speedMps
+	return time.Duration(seconds * float64(time.Second)), nil
 }

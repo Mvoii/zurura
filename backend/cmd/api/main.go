@@ -9,6 +9,7 @@ import (
 	"github.com/Mvoii/zurura/internal/db"
 	"github.com/Mvoii/zurura/internal/handlers"
 	"github.com/Mvoii/zurura/internal/middleware"
+	"github.com/Mvoii/zurura/internal/services/tracking"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -25,6 +26,8 @@ func main() {
 	}
 	defer db.Close()
 
+	log.Printf("[LOG] db connected")
+
 	go func() {
 		ticker := time.NewTicker(24 * time.Hour)
 		defer ticker.Stop()
@@ -38,6 +41,7 @@ func main() {
 				log.Printf("failed to clean up expired toks: %v", err)
 			}
 		}
+		log.Printf("[LOG] cleared expired tokens")
 	}()
 
 	r := gin.Default()
@@ -47,7 +51,8 @@ func main() {
 	userHandler := handlers.NewUserHandler(db)
 	//bussHandler := handlers
 	//routeHandler :=
-	//trackingHandler :=
+	trackingService := tracking.NewTrackingService(db)
+	trackingHandler := handlers.NewTrackingHandler(trackingService)
 	// bookingHandler :=
 	// paymentHander :=
 	operatorHandler := handlers.NewOperatorHandler(db)
@@ -78,11 +83,24 @@ func main() {
 			// protected.PUT("/users/profile", userHandler.UpdateProfile)
 		}
 
-		protected.Use(middleware.OperatorAuthRequired(db))
+		protected.Use(middleware.OperatorAuthRequired(db), middleware.RoleRequired("operator"))
 		{
 			protected.POST("/op/buses", operatorHandler.AddBus)
 			protected.PUT("/op/buses/:id", operatorHandler.UpdateBus)
 			protected.GET("/op/buses", operatorHandler.ListBuses)
+		}
+
+		driverRoutes := api.Group("/driver")
+		driverRoutes.Use(middleware.AuthRequired(db), middleware.RoleRequired("driver"))
+		{
+			driverRoutes.POST("/tracking", trackingHandler.UpdateLocation)
+
+		}
+
+		publicTracking := api.Group("/tracking")
+		{
+			publicTracking.GET("/nearby", trackingHandler.GetNearby)
+			publicTracking.GET("/:bus_id", trackingHandler.GetBusLocation)
 		}
 	}
 
