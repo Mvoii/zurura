@@ -2,7 +2,9 @@
 package middleware
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -11,10 +13,13 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 )
 
-func AuthRequired() gin.HandlerFunc {
+func AuthRequired(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
+		log.Printf("[DEBUG] Authorization Header: %s", authHeader)
+
 		if authHeader == "" {
+			log.Printf("[Error] No authorization header provided")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "No authorization header"})
 			c.Abort()
 			return
@@ -22,11 +27,14 @@ func AuthRequired() gin.HandlerFunc {
 
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "INvalid auth fmt"})
+			log.Printf("[Error] Invalid header format: %v", parts)
+
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid auth fmt"})
 			c.Abort()
 			return
 		}
 		tokenStr := parts[1]
+		log.Printf("Token: %s", tokenStr)
 
 		// parse and validate tok
 		token, err := jwt.Parse(tokenStr, func(token *jwt.Token) (interface{}, error) {
@@ -49,6 +57,22 @@ func AuthRequired() gin.HandlerFunc {
 			return
 		}
 
+		jti, jtiExists := claims["jti"].(string)
+		if !jtiExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token missing jti"})
+			c.Abort()
+			return
+		}
+
+		var isBlacklisted bool
+		err = db.QueryRow(
+			`SELECT EXISTS(SELECT 1 FROM token_blacklist WHERE jti = $1)`, jti).Scan(&isBlacklisted)
+		if isBlacklisted {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token revoked"})
+			c.Abort()
+			return
+		}
+
 		c.Set("user_id", claims["user_id"])
 		c.Set("email", claims["email"])
 		c.Set("school_id", claims["school_id"])
@@ -58,10 +82,10 @@ func AuthRequired() gin.HandlerFunc {
 }
 
 // OperatorAuthRequired checks if the user is an operator
-func OperatorAuthRequired() gin.HandlerFunc {
+func OperatorAuthRequired(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// First apply the regular auth check
-		AuthRequired()(c)
+		AuthRequired(db)(c)
 
 		// Check if request was aborted by the auth middleware
 		if c.IsAborted() {
@@ -78,18 +102,17 @@ func OperatorAuthRequired() gin.HandlerFunc {
 
 		// TODO: Check if user is an operator in the database
 		// For now, we'll use a simple environment variable for testing
-		allowedOperators := strings.Split(os.Getenv("ALLOWED_OPERATORS"), ",")
+		/* allowedOperators := strings.Split(os.Getenv("ALLOWED_OPERATORS"), ",") */
 		isOperator := false
+		err := db.QueryRow(`
+			SELECT EXISTS(
+				SELECT 1 FROM bus_operators
+				WHERE user_id = $1
+			)`, userID,
+		).Scan(&isOperator)
 
-		for _, id := range allowedOperators {
-			if id == userID.(string) {
-				isOperator = true
-				break
-			}
-		}
-
-		if !isOperator {
-			c.JSON(http.StatusForbidden, gin.H{"error": "Not authorized as operator"})
+		if err != nil || !isOperator{
+			c.JSON(http.StatusForbidden, gin.H{"error": "operator privileges required"})
 			c.Abort()
 			return
 		}

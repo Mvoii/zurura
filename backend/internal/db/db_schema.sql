@@ -201,6 +201,18 @@ CREATE TABLE IF NOT EXISTS payments (
 );
 
 -- bookings
+CREATE TABLE bookings (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id),
+    bus_id UUID NOT NULL REFERENCES buses(id),
+    route_id UUID NOT NULL REFERENCES bus_routes(id),
+    bus_stop_id UUID NOT NULL REFERENCES bus_stops(id),
+    booking_time TIMESTAMPTZ NOT NULL,
+    status booking_status NOT NULL DEFAULT 'pending',
+    payment_id UUID REFERENCES payments(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
 
 -- notif
 
@@ -231,6 +243,15 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 );
 
+-- Add token to blacklist
+CREATE TABLE IF NOT EXISTS token_blacklist (
+    jti UUID PRIMARY KEY,
+    token TEXT NOT NULL,    -- full token for auditing
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_token_blacklist_expires_at ON token_blacklist(expires_at);
 
 -- indexes for performance optimizations
 CREATE INDEX idx_users_email ON users(email);

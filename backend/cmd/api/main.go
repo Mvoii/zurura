@@ -4,6 +4,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	"github.com/Mvoii/zurura/internal/db"
 	"github.com/Mvoii/zurura/internal/handlers"
@@ -24,6 +25,21 @@ func main() {
 	}
 	defer db.Close()
 
+	go func() {
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			_, err := db.Exec(`
+				DELETE FROM token_blacklist
+				WHERE expires_at < NOW() - INTERVAL '2 days'
+			`)
+			if err != nil {
+				log.Printf("failed to clean up expired toks: %v", err)
+			}
+		}
+	}()
+
 	r := gin.Default()
 
 	// init handlers
@@ -34,7 +50,7 @@ func main() {
 	//trackingHandler :=
 	// bookingHandler :=
 	// paymentHander :=
-	// operatorHandler :=
+	operatorHandler := handlers.NewOperatorHandler(db)
 
 	// middleware
 	r.Use(
@@ -49,15 +65,24 @@ func main() {
 		{
 			public.POST("/auth/login", authHandler.Login)
 			public.POST("/auth/register", authHandler.Register)
+			public.POST("/auth/register/op", authHandler.RegisterOperator)
 		}
 
 		// protected routes
 		protected := api.Group("/")
-		protected.Use(middleware.AuthRequired())
+		protected.Use(middleware.AuthRequired(db))
 		{
+			protected.POST("/auth/logout", authHandler.Logout)
 			// User profile
 			protected.GET("/me/profile", userHandler.GetProfile)
 			// protected.PUT("/users/profile", userHandler.UpdateProfile)
+		}
+
+		protected.Use(middleware.OperatorAuthRequired(db))
+		{
+			protected.POST("/op/buses", operatorHandler.AddBus)
+			protected.PUT("/op/buses/:id", operatorHandler.UpdateBus)
+			protected.GET("/op/buses", operatorHandler.ListBuses)
 		}
 	}
 
