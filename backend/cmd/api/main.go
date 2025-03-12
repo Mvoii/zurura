@@ -50,7 +50,7 @@ func main() {
 	//trackingHandler :=
 	// bookingHandler :=
 	// paymentHander :=
-	// operatorHandler :=
+	operatorHandler := handlers.NewOperatorHandler(db)
 
 	// middleware
 	r.Use(
@@ -65,6 +65,7 @@ func main() {
 		{
 			public.POST("/auth/login", authHandler.Login)
 			public.POST("/auth/register", authHandler.Register)
+			public.POST("/auth/register/op", authHandler.RegisterOperator)
 		}
 
 		// protected routes
@@ -80,8 +81,8 @@ func main() {
 		protected.Use(middleware.OperatorAuthRequired(db))
 		{
 			protected.POST("/op/buses", operatorHandler.AddBus)
-			protected.PUT("/op/buses/:id", operatorHander.UpdateBus)
-			protected.GET("/op/buses", operatorHander.ListBuses)
+			protected.PUT("/op/buses/:id", operatorHandler.UpdateBus)
+			protected.GET("/op/buses", operatorHandler.ListBuses)
 		}
 	}
 
