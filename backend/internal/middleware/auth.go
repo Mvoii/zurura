@@ -73,9 +73,18 @@ func AuthRequired(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
+		// role from jwt claims
+		role, roleExists := claims["role"].(string)
+		if !roleExists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token missing role claim"})
+			c.Abort()
+			return
+		}
+
 		c.Set("user_id", claims["user_id"])
 		c.Set("email", claims["email"])
 		c.Set("school_id", claims["school_id"])
+		c.Set("role", role)
 
 		c.Next()
 	}
@@ -111,8 +120,69 @@ func OperatorAuthRequired(db *sql.DB) gin.HandlerFunc {
 			)`, userID,
 		).Scan(&isOperator)
 
-		if err != nil || !isOperator{
+		if err != nil || !isOperator {
 			c.JSON(http.StatusForbidden, gin.H{"error": "operator privileges required"})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
+
+func DriverAuthReqired(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		AuthRequired(db)(c)
+
+		// Check if request was aborted by the auth middleware
+		if c.IsAborted() {
+			return
+		}
+
+		// Get user ID from context
+		userID, exists := c.Get("user_id")
+		if !exists {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+			c.Abort()
+			return
+		}
+
+		// get bus id from route params
+		busID := c.Param("bus_id")
+
+		// verify asignment
+		var isAssigned bool
+		err := db.QueryRow(`
+			SELECT EXISTS(
+				SELECT 1 FROM drivers 
+				WHERE id = $1 AND bus_id = $2
+			)`, userID, busID).Scan(&isAssigned)
+
+		if !isAssigned || err != nil {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Driver not assigned to this bus"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+func RoleRequired(requiredRole string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		currentRole, exists := c.Get("role")
+		if !exists {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Role not found in request context"})
+			c.Abort()
+			return
+		}
+
+		// compare with req role
+		if currentRole != requiredRole {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": fmt.Sprintf(
+					"Requires '%s' role, current role: %s", requiredRole, currentRole,
+				),
+			})
 			c.Abort()
 			return
 		}

@@ -22,11 +22,11 @@ func NewPostgresDB() (*sql.DB, error) {
 	//conn_str := fmt.Sprint("uri=%s", os.Getenv("DB_URI"))
 	db, err := sql.Open("postgres", conn_str)
 	if err != nil {
-		return nil, fmt.Errorf("error opening db: %w", err)
+		return nil, fmt.Errorf("[ERROR] error opening db: %w", err)
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("error connecting to db: %w", err)
+		return nil, fmt.Errorf("[ERROR] error connecting to db: %w", err)
 	}
 
 	return db, nil

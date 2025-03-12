@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS bus_locations (
     bus_id UUID NOT NULL REFERENCES buses(id),
     latitude FLOAT NOT NULL,
     longitude FLOAT NOT NULL,
-    -- geoloaction GEOGRAPHY(POINT),
+    geoloaction GEOGRAPHY(Point),
     speed FLOAT,
     direction FLOAT,
     occupancy INT,
@@ -145,7 +145,7 @@ CREATE TABLE IF NOT EXISTS bus_locations (
 );
 
 -- TODO: set geoloaction point for bus location spatial queries
-/* CREATE OR REPLACE FUNCTION update_bus_location_geolocation()
+CREATE OR REPLACE FUNCTION update_bus_location_geolocation()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.geoloaction = ST_SetSRID(ST_MakePoint(NEW.longitude, NEW.latitude), 4326)::geography;
@@ -156,7 +156,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER set_bus_location_geolocation
 BEFORE INSERT OR UPDATE ON bus_locations
 FOR EACH ROW EXECUTE FUNCTION update_bus_location_geolocation();
- */
+
 
 -- TODO: route delays
 
@@ -265,7 +265,7 @@ CREATE INDEX idx_schedules_route_id ON schedules(route_id);
 CREATE INDEX idx_schedules_bus_id ON schedules(bus_id);
 CREATE INDEX idx_bus_locations_bus_id ON bus_locations(bus_id);
 -- CREATE INDEX idx_bus_locations_timestamp ON bus_locations(timestamp);
---CREATE INDEX idx_bus_locations_geolocation ON bus_locations USING GIST(geolocation);
+CREATE INDEX idx_bus_locations_geolocation ON bus_locations USING GIST(geolocation);
 CREATE INDEX idx_bus_passes_user_id ON bus_passes(user_id);
 CREATE INDEX idx_payments_user_id ON payments(user_id);
 CREATE INDEX idx_payments_status ON payments(payment_status);

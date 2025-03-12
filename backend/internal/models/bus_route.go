@@ -11,9 +11,11 @@ type BusRoute struct {
 }
 
 type RouteBusStop struct {
-	ID        string    `json:"id" db:"id"`
-	RouteID   string    `json:"route_id" db:"route_id"`
-	BusStopID string    `json:"bus_stop_id" db:"bus_stop_id"`
-	StopOrder int       `json:"stop_order" db:"stop_order"`
-	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	ID         string    `json:"id" db:"id"`
+	RouteID    string    `json:"route_id" db:"route_id"`
+	BusStopID  string    `json:"bus_stop_id" db:"bus_stop_id"`
+	StopOrder  int       `json:"stop_order" db:"stop_order"`
+	//Timetable  []string  `json:"timetable" db:"timetable"`
+	//TravelTime int       `json:"travel_time" db:"estimated_arrival_time"` // Minutes
+	CreatedAt  time.Time `json:"created_at" db:"created_at"`
 }
