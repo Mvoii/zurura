@@ -69,3 +69,5 @@ generated/
 
 # Project specific
 deploy/secrets/
+
+.test_ends

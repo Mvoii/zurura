@@ -53,6 +53,8 @@ func main() {
 	//routeHandler :=
 	trackingService := tracking.NewTrackingService(db)
 	trackingHandler := handlers.NewTrackingHandler(trackingService)
+	routeHandler := handlers.NewRouteHandler(db)
+	//trackingHandler :=
 	// bookingHandler :=
 	// paymentHander :=
 	operatorHandler := handlers.NewOperatorHandler(db)
@@ -88,6 +90,9 @@ func main() {
 			protected.POST("/op/buses", operatorHandler.AddBus)
 			protected.PUT("/op/buses/:id", operatorHandler.UpdateBus)
 			protected.GET("/op/buses", operatorHandler.ListBuses)
+
+			protected.POST("op/routes", routeHandler.CreateRoute)
+			protected.POST("op/:route_id/stops", routeHandler.AddStopToRoute)
 		}
 
 		driverRoutes := api.Group("/driver")
@@ -102,20 +107,25 @@ func main() {
 			publicTracking.GET("/nearby", trackingHandler.GetNearby)
 			publicTracking.GET("/:bus_id", trackingHandler.GetBusLocation)
 		}
-	}
 
-	// Health check
-	r.GET("/health", func(c *gin.Context) {
-		c.JSON(200, gin.H{"status": "ok"})
-	})
+		publicRoutes := api.Group("/routes")
+		{
+			publicRoutes.GET("/:route_id", routeHandler.GetRouteDetails)
+		}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+		// Health check
+		r.GET("/health", func(c *gin.Context) {
+			c.JSON(200, gin.H{"status": "ok"})
+		})
 
-	log.Printf("Starting server on :%s", port)
-	if err := r.Run(":" + port); err != nil {
-		log.Fatalf("Failed to start server: %v", err)
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "8080"
+		}
+
+		log.Printf("Starting server on :%s", port)
+		if err := r.Run(":" + port); err != nil {
+			log.Fatalf("Failed to start server: %v", err)
+		}
 	}
 }

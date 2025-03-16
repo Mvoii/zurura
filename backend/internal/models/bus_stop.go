@@ -8,7 +8,7 @@ type BusStop struct {
 	LandmarkDescription string    `json:"landmark_description" db:"landmark_description"`
 	Latitude            float64   `json:"latitude" db:"latitude"`
 	Longitude           float64   `json:"longitude" db:"longitude"`
-	Geolocation         string    `json:"-" d:"geolocation"`
+	Geolocation         string    `json:"-" db:"geolocation"`
 	CreatedAt           time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt           time.Time `json:"updated_at" db:"updated_at"`
 }
