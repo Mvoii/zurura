@@ -50,7 +50,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db)
 	//bussHandler := handlers
-	//routeHandler :=
+	scheduleHandler := handlers.NewScheduleHandler(db)
 	trackingService := tracking.NewTrackingService(db)
 	trackingHandler := handlers.NewTrackingHandler(trackingService)
 	routeHandler := handlers.NewRouteHandler(db)
@@ -58,6 +58,11 @@ func main() {
 	// bookingHandler :=
 	// paymentHander :=
 	operatorHandler := handlers.NewOperatorHandler(db)
+
+	/// [MOCK]
+	/// Initialize with mock payment service
+	//paymentService := handlers.MockPaymentService{}
+	//bookingHandler := handlers.NewBookingHandler(db, &paymentService)
 
 	// middleware
 	r.Use(
@@ -73,6 +78,8 @@ func main() {
 			public.POST("/auth/login", authHandler.Login)
 			public.POST("/auth/register", authHandler.Register)
 			public.POST("/auth/register/op", authHandler.RegisterOperator)
+
+			public.GET("/schedules", scheduleHandler.ListSchedules)
 		}
 
 		// protected routes
@@ -93,6 +100,9 @@ func main() {
 
 			protected.POST("op/routes", routeHandler.CreateRoute)
 			protected.POST("op/:route_id/stops", routeHandler.AddStopToRoute)
+
+			protected.POST("/op/schedules", scheduleHandler.CreateSchedule)
+			//protected.GET("/op.schedules", scheduleHandler.ListSchedule)/
 		}
 
 		driverRoutes := api.Group("/driver")

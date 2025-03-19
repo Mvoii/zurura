@@ -133,13 +133,13 @@ func (h *RouteHandler) CreateRoute(c *gin.Context) {
 	}
 
 	_, err := h.db.Exec(`
-		INSERT INTO bus_routes (id, route_name, description)
-		VALUES (uuid_generate_4(), $1, $2)`,
+		INSERT INTO bus_routes (route_name, description)
+		VALUES ($1, $2)`,
 		route.RouteName, route.Description)
 
 	if err != nil {
 		log.Printf("[ERROR] %v", err)
-		c.JSON(http.StatusConflict, gin.H{"error": "rouet name already exists"})
+		c.JSON(http.StatusConflict, gin.H{"error": "route name already exists"})
 		return
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Route created"})

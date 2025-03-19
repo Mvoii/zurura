@@ -43,12 +43,14 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS bus_operators (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     name VARCHAR(255) NOT NULL,
+    user_id UUID NOT NULL REFERENCES users(id),
     contact_info TEXT NOT NULL,
     email VARCHAR(255),
     phone VARCHAR(20),
     address TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (id, user_id)
 );
 
 -- buses
@@ -200,19 +202,29 @@ CREATE TABLE IF NOT EXISTS payments (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- bookings
-CREATE TABLE bookings (
+-- Bookings
+CREATE TABLE IF NOT EXISTS bookings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES users(id),
     bus_id UUID NOT NULL REFERENCES buses(id),
     route_id UUID NOT NULL REFERENCES bus_routes(id),
-    bus_stop_id UUID NOT NULL REFERENCES bus_stops(id),
-    booking_time TIMESTAMPTZ NOT NULL,
-    status booking_status NOT NULL DEFAULT 'pending',
-    payment_id UUID REFERENCES payments(id),
+    seats JSONB NOT NULL, -- {"seat_numbers": ["A1", "A2"], "count": 2}
+    fare FLOAT NOT NULL,
+    payment_method payment_method NOT NULL,
+    status booking_status DEFAULT 'pending',
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    expires_at TIMESTAMPTZ NOT NULL, -- Reservation expiry
+    boarded_at TIMESTAMPTZ
 );
+
+-- Bus Pass Usage Tracking
+CREATE TABLE IF NOT EXISTS pass_usage (
+    pass_id UUID NOT NULL REFERENCES bus_passes(id),
+    booking_id UUID NOT NULL REFERENCES bookings(id),
+    amount FLOAT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 
 -- notif
 
@@ -269,8 +281,9 @@ CREATE INDEX idx_bus_locations_geolocation ON bus_locations USING GIST(geolocati
 CREATE INDEX idx_bus_passes_user_id ON bus_passes(user_id);
 CREATE INDEX idx_payments_user_id ON payments(user_id);
 CREATE INDEX idx_payments_status ON payments(payment_status);
---CREATE INDEX idx_bookings_user_id ON bookings(user_id);
---CREATE INDEX idx_bookings_bus_id ON bookings(bus_id);
+CREATE INDEX idx_bookings_user_id ON bookings(user_id);
+CREATE INDEX idx_bookings_bus ON bookings(bus_id);
+CREATE INDEX idx_pass_usage ON pass_usage(pass_id);
 --CREATE INDEX idx_bookings_status ON bookings(status);
 --CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 --CREATE INDEX idx_notifications_read_at ON notifications(read_at) WHERE read_at IS NULL;
@@ -410,3 +423,13 @@ COMMENT ON TABLE notifications IS 'User notifications for various events';
 COMMENT ON TABLE loyalty_discounts IS 'Discounts for loyal users based on ride count';
 --COMMENT ON TABLE referrals IS 'User referral tracking';
 COMMENT ON TABLE audit_logs IS 'System audit logs for security and compliance';
+
+ALTER TABLE bus_operators
+ADD COLUMN user_id UUID NOT NULL REFERENCES users(id);
+
+-- Drop the old primary key (if exists)
+ALTER TABLE bus_operators DROP CONSTRAINT IF EXISTS bus_operators_pkey;
+
+-- Create composite primary key (id + user_id)
+ALTER TABLE bus_operators
+ADD PRIMARY KEY (id, user_id);

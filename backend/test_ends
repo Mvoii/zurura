@@ -1,0 +1,266 @@
+#!/usr/bin/env bash
+
+# create route
+POST /operator/routes
+Authorization: Bearer <OPERATOR_TOKEN>
+{
+	"name": "CBD to Westlands",
+	"description": "Main commuter route"
+}
+
+# add stop
+POST /operator/routes/{route_id}/stops
+Authorization: Bearer <OPERATOR_TOKEN>
+{
+	"stop_id": "stop_123",
+	"timetable": ["07:00", "12:00", "18:00"],
+	"travel_time": 15
+}
+
+# get route details
+GET /routes/{route_id}
+
+# nearby stops
+GET /stops/nearby?lat=-1.2921&lng=36.8219&radius=1000
+
+
+# sample response
+{
+	"route": {
+		"id": "route_123",
+		"name": "CBD to Westlands",
+		"description": "Main commuter route",
+		"created_at": "2025-03-12T08:00:00Z",
+		"updated_at": "2025-03-12T08:00:00Z"
+	},
+	"stops": [
+		{
+			"route_id": "route_123",
+			"stop_id": "stop_456",
+			"order": 1,
+			"timetable": ["07:00", "12:00", "18:00"],
+			"travel_time": 15,
+			"stop_details": {
+				"id": "stop_456",
+				"name": "City Square",
+				"landmark_description": "Next to post office",
+				"latitude": -1.2921,
+				"longitude": 36.8219,
+				"created_at": "2025-03-12T08:00:00Z",
+				"updated_at": "2025-03-12T08:00:00Z"
+			}
+		}
+	]
+}
+ 
+
+# 
+# // backend/internal/handlers/bookings.go
+# package handlers
+# 
+# import (
+# 	"database/sql"
+# 	"errors"
+# 	"log"
+# 	"net/http"
+# 	"time"
+# 
+# 	"github.com/Mvoii/zurura/internal/models"
+# 	"github.com/gin-gonic/gin"
+# 	"github.com/google/uuid"
+# )
+# 
+# type BookingHandler struct {
+# 	db *sql.DB
+# 	//paymentGate PaymentService
+# }
+# 
+# func NewBookingHandler(db *sql.DB /*, pg PaymentService*/) *BookingHandler {
+# 	return &BookingHandler{db: db /*paymentGate:pg*/}
+# }
+# 
+# func (h *BookingHandler) CreateBooking(c *gin.Context) {
+# 	var req struct {
+# 		BusID         string   `json:"bus_id" binding:"required"`
+# 		SeatNumbers   []string `json:"seat_numbers" bindng:"required"`
+# 		PaymentMethod string   `json:"payment_method" binding:"required"`
+# 	}
+# 
+# 	if err := c.ShouldBindJSON(&req); err != nil {
+# 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+# 		return
+# 	}
+# 
+# 	tx, _ := h.db.Begin()
+# 	defer tx.Rollback()
+# 
+# 	// seat availability
+# 	var available bool
+# 	err := tx.QueryRow(`
+# 		SELECT (b.capacity - b.current_occupancy) >= 1
+# 		FROM buses b
+# 		WHERE b.id = $2
+# 	`, len(req.SeatNumbers), req.BusID).Scan(&available)
+# 
+# 	if !available || err != nil {
+# 		c.JSON(http.StatusConflict, gin.H{"error": "seats unavailable"})
+# 		return
+# 	}
+# 
+# 	fare, err := calculateFare(tx, req.BusID, len(req.SeatNumbers))
+# 
+# 	switch req.PaymentMethod {
+# 	case "bus_pass":
+# 		if err := deductFromPass(c.GetString("user_id"), fare, tx); err != nil {
+# 			log.Printf("[ERROR] %v", err)
+# 			c.JSON(http.StatusPaymentRequired, gin.H{"error": err.Error()})
+# 			return
+# 		}
+# 
+# 	default:
+# 		if err := h.paymentGate.Process(c, fare); err != nil {
+# 			log.Printf("[ERROR] %v", err)
+# 			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Payment failed"})
+# 			return
+# 		}
+# 	}
+# 
+# 	bookingID := uuid.New().String()
+# 	_, err = tx.Exec(`
+# 		INSERT INTO bookings (booking_id, user_id, bus_id, route_id, seats, fare) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), $8)
+# 	`, bookingID, time.Now().Add(15*time.Minute))
+# 	if err != nil {
+# 		log.Printf("[ERROR] %v", err)
+# 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+# 		return
+# 	}
+# 
+# 	_, err = tx.Exec(`
+# 		UPDATE buses
+# 		SET current_company = current_occupancy + $1
+# 		WHERE id = $2`, len(req.SeatNumbers), req.BusID)
+# 
+# 	if err != nil {
+# 		log.Printf("[ERROR] %v", err)
+# 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+# 		return
+# 	}
+# 
+# 	tx.Commit()
+# 	if err != nil {
+# 		log.Printf("[ERROR] %v", err)
+# 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+# 		return
+# 	}
+# 
+# 	c.JSON(http.StatusCreated, gin.H{
+# 		"booking_id": bookingID,
+# 		"expires_at": time.Now().Add(15 * time.Minute).Format(time.RFC3339),
+# 	})
+# }
+# 
+# // helpers
+# func deductFromPass(userID string, amount float64, tx *sql.Tx) error {
+# 	var pass models.BusPass
+# 	err := tx.QueryRow(`
+# 		SELECT id, balance
+# 		FROM bus_passes
+# 		WHERE user_id = $1
+# 		AND status = 'active'
+# 		AND expiration_date > NOW()
+# 		ORDER BY expiration_date DESC
+# 		LIMIT 1
+# 	`, userID).Scan(&pass.ID, &pass.Balance)
+# 	if err != nil {
+# 		log.Printf("[ERROR] %v", err)
+# 		return errors.New(err.Error())
+# 	}
+# 
+# 	if pass.Balance < amount {
+# 		return errors.New("insufficient pass balance")
+# 	}
+# 
+# 	_, err = tx.Exec(`
+# 		UPDATE bus_passes
+# 		SET balance = balance - $1
+# 		WHERE id = $2
+# 	`, amount, pass.ID)
+# 	if err != nil {
+# 		log.Printf("[ERROR] %v", err)
+# 		return errors.New(err.Error())
+# 	}
+# 
+# 	_, err = tx.Exec(`
+# 		INSERT INTO pass_usage (...) VALUES ($1, $2, $3)
+# 	`, pass.ID, bookingID, amount)
+# 	if err != nil {
+# 		log.Printf("[ERROR] %v", err)
+# 		return errors.New(err.Error())
+# 	}
+# 
+# 	return nil
+# }
+
+
+# select seats and pay
+POST /bookings
+{
+  "bus_id": "bus_123",
+  "seat_numbers": ["A1", "A2"],
+  "payment_method": "bus_pass"
+}
+
+
+# check pass balance
+GET /passes
+ 
+# cancel booking
+POST /bookings/booking_123/cancel
+ 
+# Create booking
+curl -X POST http://localhost:8080/bookings \
+  -H "Authorization: Bearer <USER_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bus_id": "bus_123",
+    "seat_numbers": ["A1", "A2"],
+    "payment_method": "bus_pass"
+  }'
+
+# Check booking status
+curl -H "Authorization: Bearer <USER_TOKEN>" \
+  http://localhost:8080/bookings/<BOOKING_ID>
+
+Next Steps
+Implement webhook for payment confirmation
+
+Add seat map visualization API
+
+Create boarding pass QR system
+
+Develop loyalty rewards program
+
+# Create booking
+curl -X POST http://localhost:8080/bookings \
+  -H "Authorization: Bearer <USER_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "bus_id": "bus_123",
+    "seat_numbers": ["A1", "A2"],
+    "payment_method": "bus_pass"
+  }'
+
+# Check booking status
+curl -H "Authorization: Bearer <USER_TOKEN>" \
+  http://localhost:8080/bookings/<BOOKING_ID>
+
+# op registration
+curl -X POST http://localhost:8080/a/v1/auth/register/op \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "test_op3@test.com",
+    "password": "test_op3@test.com",
+    "first_name": "test",
+    "last_name": "op",
+    "company": "test_1 sacco"
+  }'

@@ -1,51 +1,74 @@
-// backend/internal/services/notifications/notifications.go
-package notifications
+// internal/services/notifications.go
+package services
 
 import (
 	"database/sql"
-	"log"
-	"time"
+	"fmt"
 )
 
-type Service struct {
-	db       *sql.DB
-	pushChan chan Notification
+type NotificationService struct {
+	db         *sql.DB
+	smsQueue   chan SMSMessage
+	emailQueue chan EmailMessage
 }
 
-type Notification struct {
-	UserID  string
-	Type    string
-	Message string
-	Time    time.Time
+type SMSMessage struct {
+	Phone   string
+	Content string
 }
 
-func NewService(db *sql.DB) *Service {
-	s := &Service{
-		db:       db,
-		pushChan: make(chan Notification, 100),
+type EmailMessage struct {
+	Email   string
+	Subject string
+	Body    string
+}
+
+func NewNotificationService(db *sql.DB) *NotificationService {
+	ns := &NotificationService{
+		db:         db,
+		smsQueue:   make(chan SMSMessage, 100),
+		emailQueue: make(chan EmailMessage, 100),
 	}
-	go s.processNotifications()
-	return s
+	go ns.processNotifications()
+	return ns
 }
 
-func (s *Service) ScheduleNotification(userID, notifType, message string, triggerTime time.Time) error {
+func (s *NotificationService) Send(userID string, msgType string, message string) error {
+	// Store in database
 	_, err := s.db.Exec(`
-        INSERT INTO notifications 
-        (user_id, type, message, scheduled_at)
-        VALUES ($1, $2, $3, $4)`,
-		userID, notifType, message, triggerTime)
+		INSERT INTO notifications 
+		(user_id, type, message)
+		VALUES ($1, $2, $3)
+	`, userID, msgType, message)
+
+	// Queue for delivery
+	var user struct {
+		Phone string
+		Email string
+	}
+	s.db.QueryRow("SELECT phone, email FROM users WHERE id = $1", userID).
+		Scan(&user.Phone, &user.Email)
+
+	switch msgType {
+	case "sms":
+		s.smsQueue <- SMSMessage{user.Phone, message}
+	case "email":
+		s.emailQueue <- EmailMessage{user.Email, "Transport Update", message}
+	}
+
 	return err
 }
 
-func (s *Service) processNotifications() {
+func (s *NotificationService) processNotifications() {
 	for {
 		select {
-		case notif := <-s.pushChan:
+		case sms := <-s.smsQueue:
+			// Integrate with Twilio API
+			fmt.Printf("Sending SMS to %s: %s\n", sms.Phone, sms.Content)
 
-			// TODO: --
-			// Implement actual push notification logic
-			// Integrate with FCM/APNs
-			log.Printf("Sending notification to %s: %s", notif.UserID, notif.Message)
+		case email := <-s.emailQueue:
+			// Integrate with SendGrid/Mailgun
+			fmt.Printf("Sending Email to %s: %s\n", email.Email, email.Body)
 		}
 	}
 }

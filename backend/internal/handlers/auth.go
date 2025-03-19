@@ -42,8 +42,8 @@ type OperatorRegisterRequest struct {
 	Email     string `json:"email" binding:"required,email"`
 	Password  string `json:"password" binding:"required,min=8"`
 	FirstName string `json:"first_name" binding:"required"`
-	LastName  string `json:"last_name" binding:"last_name"`
-	Company   string `json:"company" bindnig:"required"`
+	LastName  string `json:"last_name" binding:"required"`
+	Company   string `json:"company" binding:"required"`
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -63,9 +63,10 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	var isOperator bool
+	//var isOperator bool
+	var role string
 	err = h.db.QueryRow(
-		`SELECT EXISTS(SELECT 1 FROM bus_operators WHERE user_id = $1)`, user.ID).Scan(&isOperator)
+		`SELECT CASE WHEN EXISTS(SELECT 1 FROM bus_operators WHERE user_id = $1) THEN 'operator' ELSE 'user' END`, user.ID).Scan(&role)
 	if err != nil {
 		log.Printf("Operator check failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
@@ -85,13 +86,13 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	claims := jwt.MapClaims{
 		"user_id": user.ID,
 		"email":   user.Email,
-		"role":    "user",
+		"role":    role,
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(), // 7 days
 		"jti":     uuid.New().String(),
 	}
-	if isOperator {
+/* 	if isOperator {
 		claims["role"] = "operator"
-	}
+	} */
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
@@ -143,17 +144,19 @@ func (h *AuthHandler) RegisterOperator(c *gin.Context) {
     `, userID, req.Email, string(hashedPass), req.FirstName, req.LastName)
 
 	if err != nil {
+		log.Printf("[DEBUG] error creaing user: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user"})
 		return
 	}
 
 	// Create operator entry
 	_, err = h.db.Exec(`
-        INSERT INTO bus_operators (id, user_id, name, contact_info)
-        VALUES ($1, $2, $3, '')
-    `, uuid.New().String(), userID, req.Company)
+        INSERT INTO bus_operators (id, user_id, name, contact_info, email, phone, address)
+        VALUES ($1, $2, $3, '', $4, '', '')
+    `, uuid.New().String(), userID, req.Company, req.Email)
 
 	if err != nil {
+		log.Printf("DATABASE ERROR: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create operator"})
 		return
 	}
@@ -162,6 +165,7 @@ func (h *AuthHandler) RegisterOperator(c *gin.Context) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": userID,
 		"email":   req.Email,
+		"role":    "operator",
 		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
 		"jti":     uuid.New().String(),
 	})
@@ -191,7 +195,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var count int
 	query := `SELECT COUNT(*) FROM "users" WHERE email = $1`
 	if err := h.db.QueryRow(query, req.Email).Scan(&count); err != nil {
-		log.Printf("DATABASE ERROR: 1 - %v", err)
+		log.Printf("[DATABASE ERROR] email checker: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
