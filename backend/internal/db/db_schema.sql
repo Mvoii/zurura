@@ -101,6 +101,7 @@ CREATE TABLE IF NOT EXISTS bus_routes (
     route_name VARCHAR(255) NOT NULL,
     description TEXT,
     estimated_duration INTERVAL,
+    base_fare DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -198,6 +199,8 @@ CREATE TABLE IF NOT EXISTS payments (
     transaction_id VARCHAR(255) NOT NULL,
     payment_gateway_response JSONB,
     expires_at TIMESTAMPTZ,
+    currency VARCHAR(3) NOT NULL DEFAULT 'KES',
+    metadata JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -433,3 +436,30 @@ ALTER TABLE bus_operators DROP CONSTRAINT IF EXISTS bus_operators_pkey;
 -- Create composite primary key (id + user_id)
 ALTER TABLE bus_operators
 ADD PRIMARY KEY (id, user_id);
+
+-- Add base_fare to bus_routes
+ALTER TABLE bus_routes ADD COLUMN base_fare DECIMAL(10,2) NOT NULL DEFAULT 0.00;
+
+-- Add currency and metadata to payments
+ALTER TABLE payments 
+    ADD COLUMN currency VARCHAR(3) NOT NULL DEFAULT 'KES',
+    ADD COLUMN metadata JSONB;
+
+-- Add to db_schema.sql
+CREATE TABLE IF NOT EXISTS bus_route_assignments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bus_id UUID NOT NULL REFERENCES buses(id),
+    route_id UUID NOT NULL REFERENCES bus_routes(id),
+    operator_id UUID NOT NULL REFERENCES bus_operators(id),
+    status VARCHAR(50) NOT NULL DEFAULT 'active',
+    start_date TIMESTAMPTZ NOT NULL,
+    end_date TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Add indexes
+CREATE INDEX idx_bus_route_assignments_bus_id ON bus_route_assignments(bus_id);
+CREATE INDEX idx_bus_route_assignments_route_id ON bus_route_assignments(route_id);
+CREATE INDEX idx_bus_route_assignments_operator_id ON bus_route_assignments(operator_id);
+CREATE INDEX idx_bus_route_assignments_status ON bus_route_assignments(status);
