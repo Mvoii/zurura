@@ -98,7 +98,7 @@ func main() {
 			protected.POST("/auth/logout", authHandler.Logout)
 			// User profile
 			protected.GET("/me/profile", userHandler.GetProfile)
-			// protected.PUT("/users/profile", userHandler.UpdateProfile)
+			protected.PUT("/me/profile", userHandler.UpdateProfile)
 
 			// Add booking routes
 			protected.POST("/bookings", bookingHandler.CreateBooking)
