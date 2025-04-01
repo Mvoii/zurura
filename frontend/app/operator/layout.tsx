@@ -1,3 +1,5 @@
+"use client"
+
 import type React from "react"
 import { Sidebar } from "@/components/sidebar"
 import { TopNav } from "@/components/top-nav"

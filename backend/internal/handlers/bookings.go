@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	//"github.com/Mvoii/zurura/internal/errors"
 	"github.com/Mvoii/zurura/internal/models"
@@ -137,6 +138,130 @@ func (h *BookingHandler) CancelBooking(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Booking cancelled successfully"})
+}
+
+// GetUserBookings retrieves all bookings for the authenticated user
+func (h *BookingHandler) GetUserBookings(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Query to get all user bookings with basic info
+	query := `
+		SELECT 
+			b.id, 
+			b.user_id, 
+			b.bus_id, 
+			b.route_id,
+			b.seats,
+			b.fare, 
+			b.status, 
+			b.created_at, 
+			b.expires_at,
+			COALESCE(b.boarded_at, '0001-01-01 00:00:00'::timestamp) as boarded_at,
+			r.route_name,
+			r.origin,
+			r.destination
+		FROM 
+			bookings b
+		LEFT JOIN
+			bus_routes r ON b.route_id = r.id
+		WHERE 
+			b.user_id = $1
+		ORDER BY 
+			b.created_at DESC
+	`
+
+	rows, err := h.db.Query(query, userID)
+	if err != nil {
+		log.Printf("[ERROR] Failed to fetch user bookings: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch bookings"})
+		return
+	}
+	defer rows.Close()
+
+	var bookings []gin.H
+	for rows.Next() {
+		var (
+			id          string
+			userID      string
+			busID       string
+			routeID     string
+			seatData    []byte // JSON data for seats
+			fare        float64
+			status      string
+			createdAt   time.Time
+			expiresAt   time.Time
+			boardedAt   time.Time
+			routeName   sql.NullString
+			origin      sql.NullString
+			destination sql.NullString
+		)
+
+		err := rows.Scan(
+			&id,
+			&userID,
+			&busID,
+			&routeID,
+			&seatData,
+			&fare,
+			&status,
+			&createdAt,
+			&expiresAt,
+			&boardedAt,
+			&routeName,
+			&origin,
+			&destination,
+		)
+
+		if err != nil {
+			log.Printf("[ERROR] Failed to scan booking row: %v", err)
+			continue
+		}
+
+		// Convert NullString to string
+		routeNameStr := ""
+		if routeName.Valid {
+			routeNameStr = routeName.String
+		}
+
+		originStr := ""
+		if origin.Valid {
+			originStr = origin.String
+		}
+
+		destStr := ""
+		if destination.Valid {
+			destStr = destination.String
+		}
+
+		booking := gin.H{
+			"id":          id,
+			"user_id":     userID,
+			"bus_id":      busID,
+			"route_id":    routeID,
+			"fare":        fare,
+			"seats":       string(seatData), // This will be a JSON string that frontend can parse
+			"status":      status,
+			"created_at":  createdAt,
+			"expires_at":  expiresAt,
+			"boarded_at":  boardedAt,
+			"route_name":  routeNameStr,
+			"origin":      originStr,
+			"destination": destStr,
+		}
+
+		bookings = append(bookings, booking)
+	}
+
+	// Return empty array instead of null
+	if bookings == nil {
+		bookings = []gin.H{}
+	}
+
+	c.JSON(http.StatusOK, bookings)
 }
 
 // helpers

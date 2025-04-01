@@ -1,7 +1,11 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react'
 import { Camera, Edit, Save, User } from "lucide-react"
+import { useForm, FieldValues } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
+import { toast } from 'sonner'
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -10,31 +14,90 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
+import { useProfile } from '@/lib/hooks/useProfile'
+import { ProfilePhotoUpload } from '@/components/ui/profile-upload'
+import { Loader2 } from 'lucide-react'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+
+// Schema for form validation
+const profileFormSchema = z.object({
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
+  phone_number: z.string().optional(),
+  school_name: z.string().optional(),
+})
+
+type ProfileFormValues = z.infer<typeof profileFormSchema>
 
 export default function CommuterProfilePage() {
+  const { profile, isLoadingProfile, updateProfile, isUpdatingProfile } = useProfile()
   const [isEditing, setIsEditing] = useState(false)
-  const [profileData, setProfileData] = useState({
-    firstName: "John",
-    lastName: "Doe",
-    email: "john.doe@example.com",
-    phone: "0712 345 678",
-    address: "123 Nairobi Way, Nairobi",
-    emergencyContact: "Jane Doe - 0723 456 789",
-    bio: "Regular commuter in Nairobi, mostly traveling between CBD and Westlands.",
+  const [photoUrl, setPhotoUrl] = useState<string | undefined>(undefined)
+  
+  // Create form with React Hook Form
+  const form = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      first_name: '',
+      last_name: '',
+      phone_number: '',
+      school_name: '',
+    }
   })
-
-  const handleInputChange = (e) => {
+  
+  // Update form with profile data when it loads
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        first_name: profile.first_name,
+        last_name: profile.last_name,
+        phone_number: profile.phone_number || '',
+        school_name: profile.school_name || '',
+      })
+      setPhotoUrl(profile.profile_photo_url)
+    }
+  }, [profile, form])
+  
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
-    setProfileData({
-      ...profileData,
+    updateProfile({
       [name]: value,
     })
   }
 
-  const handleSave = () => {
-    // Save logic would go here
-    setIsEditing(false)
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    updateProfile({
+      first_name: formData.get('firstName') as string,
+      last_name: formData.get('lastName') as string,
+      phone_number: formData.get('phone') as string,
+    })
   }
+
+  // Handle form submission
+  const onSubmit = (data: ProfileFormValues) => {
+    updateProfile(data, {
+      onSuccess: () => {
+        toast.success('Profile updated successfully')
+      }
+    })
+  }
+
+  // Handle photo upload success
+  const handlePhotoUploadSuccess = (url: string) => {
+    setPhotoUrl(url)
+  }
+
+  if (isLoadingProfile) return <div className="flex items-center justify-center min-h-[60vh]"><Loader2 className="h-8 w-8 animate-spin" /></div>
 
   return (
     <div className="space-y-6">
@@ -49,9 +112,8 @@ export default function CommuterProfilePage() {
             Edit Profile
           </Button>
         ) : (
-          <Button onClick={handleSave}>
-            <Save className="mr-2 h-4 w-4" />
-            Save Changes
+          <Button type="submit" form="profile-form" disabled={isUpdatingProfile}>
+            {isUpdatingProfile ? 'Updating...' : 'Save Changes'}
           </Button>
         )}
       </div>
@@ -62,18 +124,21 @@ export default function CommuterProfilePage() {
             <CardTitle>Profile Picture</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col items-center">
-            <div className="relative">
-              <Avatar className="h-32 w-32">
-                <AvatarImage src="/placeholder.svg?height=128&width=128" alt="Profile" />
-                <AvatarFallback className="text-4xl">JD</AvatarFallback>
-              </Avatar>
-              {isEditing && (
-                <Button variant="secondary" size="icon" className="absolute bottom-0 right-0 rounded-full">
-                  <Camera className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-            <h3 className="mt-4 text-xl font-medium">John Doe</h3>
+            {isEditing ? (
+              <ProfilePhotoUpload 
+                initialPhotoUrl={photoUrl}
+                size="lg"
+                onUploadSuccess={handlePhotoUploadSuccess}
+              />
+            ) : (
+              <div className="relative">
+                <Avatar className="h-32 w-32">
+                  <AvatarImage src={photoUrl || "/placeholder.svg?height=128&width=128"} alt="Profile" />
+                  <AvatarFallback className="text-4xl">JD</AvatarFallback>
+                </Avatar>
+              </div>
+            )}
+            <h3 className="mt-4 text-xl font-medium">{profile?.first_name} {profile?.last_name}</h3>
             <p className="text-sm text-muted-foreground">Commuter</p>
           </CardContent>
         </Card>
@@ -93,85 +158,78 @@ export default function CommuterProfilePage() {
                   <CardDescription>Update your personal details</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        name="firstName"
-                        value={profileData.firstName}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="first_name"
+                        render={({ field }: { field: FieldValues }) => (
+                          <FormItem>
+                            <FormLabel>First Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your first name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        name="lastName"
-                        value={profileData.lastName}
-                        onChange={handleInputChange}
-                        disabled={!isEditing}
+                      
+                      <FormField
+                        control={form.control}
+                        name="last_name"
+                        render={({ field }: { field: FieldValues }) => (
+                          <FormItem>
+                            <FormLabel>Last Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your last name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={profileData.email}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      name="phone"
-                      value={profileData.phone}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      name="address"
-                      value={profileData.address}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="emergencyContact">Emergency Contact</Label>
-                    <Input
-                      id="emergencyContact"
-                      name="emergencyContact"
-                      value={profileData.emergencyContact}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      name="bio"
-                      value={profileData.bio}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
-                      rows={4}
-                    />
-                  </div>
+                      
+                      <FormField
+                        control={form.control}
+                        name="phone_number"
+                        render={({ field }: { field: FieldValues }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your phone number" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <FormField
+                        control={form.control}
+                        name="school_name"
+                        render={({ field }: { field: FieldValues }) => (
+                          <FormItem>
+                            <FormLabel>School Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Your school name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <Button
+                        type="submit"
+                        className="w-full"
+                        disabled={isUpdatingProfile}
+                      >
+                        {isUpdatingProfile ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Updating...
+                          </>
+                        ) : 'Save Changes'}
+                      </Button>
+                    </form>
+                  </Form>
                 </CardContent>
               </Card>
             </TabsContent>
@@ -356,4 +414,3 @@ export default function CommuterProfilePage() {
     </div>
   )
 }
-

@@ -10,19 +10,55 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function RegisterPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [userType, setUserType] = useState("commuter")
+  const { register, registerOperator, isRegistering, isRegisteringOperator } = useAuth()
+  const [passwordError, setPasswordError] = useState('')
 
-  const handleRegister = (e) => {
+  const handleCommuterRegister = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (userType === "commuter") {
-      router.push("/commuter")
-    } else {
-      router.push("/operator")
+    const formData = new FormData(e.currentTarget)
+    
+    const password = formData.get('password') as string
+    const confirmPassword = formData.get('confirm_password') as string
+    
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
     }
+    
+    register({
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      first_name: formData.get('first_name') as string,
+      last_name: formData.get('last_name') as string,
+      school_name: formData.get('school_name') as string || 'None'
+    })
+  }
+  
+  const handleOperatorRegister = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    
+    const password = formData.get('password') as string
+    const confirmPassword = formData.get('confirm_password') as string
+    
+    if (password !== confirmPassword) {
+      setPasswordError('Passwords do not match')
+      return
+    }
+    
+    registerOperator({
+      email: formData.get('email') as string,
+      password: formData.get('password') as string,
+      first_name: formData.get('first_name') as string,
+      last_name: formData.get('last_name') as string,
+      company: formData.get('company') as string
+    })
   }
 
   return (
@@ -42,30 +78,31 @@ export default function RegisterPage() {
               <TabsTrigger value="operator">Operator</TabsTrigger>
             </TabsList>
             <TabsContent value="commuter">
-              <form onSubmit={handleRegister} className="space-y-4 pt-4">
+              <form onSubmit={handleCommuterRegister} className="space-y-4 pt-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="commuter-first-name">First Name</Label>
-                    <Input id="commuter-first-name" placeholder="John" required />
+                    <Input id="commuter-first-name" name="first_name" placeholder="John" required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="commuter-last-name">Last Name</Label>
-                    <Input id="commuter-last-name" placeholder="Doe" required />
+                    <Input id="commuter-last-name" name="last_name" placeholder="Doe" required />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="commuter-email">Email</Label>
-                  <Input id="commuter-email" type="email" placeholder="john@example.com" required />
+                  <Input id="commuter-email" name="email" type="email" placeholder="john@example.com" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="commuter-phone">Phone Number</Label>
-                  <Input id="commuter-phone" type="tel" placeholder="07XX XXX XXX" required />
+                  <Label htmlFor="commuter-school">School Name</Label>
+                  <Input id="commuter-school" name="school_name" placeholder="University of Nairobi" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="commuter-password">Password</Label>
                   <div className="relative">
                     <Input
                       id="commuter-password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       required
@@ -90,39 +127,44 @@ export default function RegisterPage() {
                   <Label htmlFor="commuter-confirm-password">Confirm Password</Label>
                   <Input
                     id="commuter-confirm-password"
+                    name="confirm_password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600">
-                  Create Account
+                {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600" disabled={isRegistering}>
+                  {isRegistering ? 'Creating Account...' : 'Create Account'}
                 </Button>
               </form>
             </TabsContent>
             <TabsContent value="operator">
-              <form onSubmit={handleRegister} className="space-y-4 pt-4">
+              <form onSubmit={handleOperatorRegister} className="space-y-4 pt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="operator-first-name">First Name</Label>
+                    <Input id="operator-first-name" name="first_name" placeholder="John" required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="operator-last-name">Last Name</Label>
+                    <Input id="operator-last-name" name="last_name" placeholder="Doe" required />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="operator-company-name">Company Name</Label>
-                  <Input id="operator-company-name" placeholder="Acme Matatu Services" required />
+                  <Input id="operator-company-name" name="company" placeholder="Acme Matatu Services" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="operator-email">Email</Label>
-                  <Input id="operator-email" type="email" placeholder="info@acmematatu.com" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="operator-phone">Phone Number</Label>
-                  <Input id="operator-phone" type="tel" placeholder="07XX XXX XXX" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="operator-license">Business License Number</Label>
-                  <Input id="operator-license" placeholder="BL-12345-2025" required />
+                  <Input id="operator-email" name="email" type="email" placeholder="info@acmematatu.com" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="operator-password">Password</Label>
                   <div className="relative">
                     <Input
                       id="operator-password"
+                      name="password"
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       required
@@ -147,13 +189,15 @@ export default function RegisterPage() {
                   <Label htmlFor="operator-confirm-password">Confirm Password</Label>
                   <Input
                     id="operator-confirm-password"
+                    name="confirm_password"
                     type={showPassword ? "text" : "password"}
                     placeholder="••••••••"
                     required
                   />
                 </div>
-                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600">
-                  Create Account
+                {passwordError && <p className="text-red-500 text-sm">{passwordError}</p>}
+                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600" disabled={isRegisteringOperator}>
+                  {isRegisteringOperator ? 'Creating Account...' : 'Create Account'}
                 </Button>
               </form>
             </TabsContent>

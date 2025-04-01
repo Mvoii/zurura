@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS bus_routes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     route_name VARCHAR(255) NOT NULL,
     description TEXT,
+    origin VARCHAR(255),
+    destination VARCHAR(255),
     estimated_duration INTERVAL,
     base_fare DECIMAL(10,2) NOT NULL DEFAULT 0.00,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

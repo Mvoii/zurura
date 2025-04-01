@@ -10,19 +10,36 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useAuth } from '@/lib/hooks/useAuth'
 
 export default function LoginPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [userType, setUserType] = useState("commuter")
+  const [formValues, setFormValues] = useState({ email: '', password: '' })
+  const { login, isLoggingIn } = useAuth()
 
-  const handleLogin = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormValues(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
+
+  const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    if (userType === "commuter") {
-      router.push("/commuter")
-    } else {
-      router.push("/operator")
-    }
+    const formData = new FormData(e.currentTarget)
+    
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    
+    console.log('Form values before submit:', { email, password })
+    
+    login({
+      email,
+      password
+    })
   }
 
   return (
@@ -45,13 +62,24 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="commuter-email">Email</Label>
-                  <Input id="commuter-email" type="email" placeholder="john@example.com" required />
+                  <Input 
+                    id="commuter-email" 
+                    name="email" 
+                    value={formValues.email}
+                    onChange={handleInputChange}
+                    type="email" 
+                    placeholder="john@example.com" 
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="commuter-password">Password</Label>
                   <div className="relative">
                     <Input
                       id="commuter-password"
+                      name="password"
+                      value={formValues.password}
+                      onChange={handleInputChange}
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       required
@@ -72,8 +100,8 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600">
-                  Sign In
+                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600" disabled={isLoggingIn}>
+                  {isLoggingIn ? 'Logging in...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
@@ -81,13 +109,24 @@ export default function LoginPage() {
               <form onSubmit={handleLogin} className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="operator-email">Email</Label>
-                  <Input id="operator-email" type="email" placeholder="operator@example.com" required />
+                  <Input 
+                    id="operator-email" 
+                    name="email" 
+                    value={formValues.email}
+                    onChange={handleInputChange}
+                    type="email" 
+                    placeholder="operator@example.com" 
+                    required 
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="operator-password">Password</Label>
                   <div className="relative">
                     <Input
                       id="operator-password"
+                      name="password"
+                      value={formValues.password}
+                      onChange={handleInputChange}
                       type={showPassword ? "text" : "password"}
                       placeholder="••••••••"
                       required
@@ -108,8 +147,8 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </div>
-                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600">
-                  Sign In
+                <Button type="submit" className="w-full bg-zurura-500 hover:bg-zurura-600" disabled={isLoggingIn}>
+                  {isLoggingIn ? 'Logging in...' : 'Sign In'}
                 </Button>
               </form>
             </TabsContent>
@@ -135,4 +174,3 @@ export default function LoginPage() {
     </div>
   )
 }
-

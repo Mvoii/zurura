@@ -95,20 +95,19 @@ func (h *ScheduleHandler) ListSchedules(c *gin.Context) {
 	routeID := c.Query("route_id")
 	date := c.Query("date") // Format: 2025-03-20
 
+	// Check the actual schema of the schedules table
 	baseQuery := `
 		SELECT 
-			s.id, s.departure_time,
+			s.id, s.scheduled_departure AS departure_time,
 			b.id, b.registration_plate, b.capacity, b.current_occupancy,
-			d.id, d.first_name, d.last_name,
 			r.id, r.route_name, r.description
 		FROM schedules s
 		JOIN buses b ON s.bus_id = b.id
-		JOIN drivers d ON s.driver_id = d.id
 		JOIN bus_routes r ON s.route_id = r.id
 	`
 
 	var args []interface{}
-	filters := []string{"s.status = 'scheduled'"}
+	filters := []string{}
 
 	if routeID != "" {
 		args = append(args, routeID)
@@ -122,16 +121,25 @@ func (h *ScheduleHandler) ListSchedules(c *gin.Context) {
 			return
 		}
 		args = append(args, date)
-		filters = append(filters, fmt.Sprintf("DATE(s.departure_time) = $%d", len(args)))
+		filters = append(filters, fmt.Sprintf("DATE(s.scheduled_departure) = $%d", len(args)))
 	}
 
 	if len(filters) > 0 {
 		baseQuery += " WHERE " + strings.Join(filters, " AND ")
 	}
-	baseQuery += " ORDER BY s.departure_time LIMIT 100"
+	baseQuery += " ORDER BY s.scheduled_departure LIMIT 100"
 
-	rows, err := h.db.Query(baseQuery, args...)
+	var rows *sql.Rows
+	var err error
+	
+	if len(args) > 0 {
+		rows, err = h.db.Query(baseQuery, args...)
+	} else {
+		rows, err = h.db.Query(baseQuery)
+	}
+	
 	if err != nil {
+		log.Printf("Error querying schedules: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
@@ -140,17 +148,28 @@ func (h *ScheduleHandler) ListSchedules(c *gin.Context) {
 	var schedules []ScheduleResponse
 	for rows.Next() {
 		var s ScheduleResponse
+		// Modify the scan to exclude driver fields
 		err := rows.Scan(
 			&s.ID, &s.DepartureTime,
 			&s.Bus.ID, &s.Bus.PlateNumber, &s.Bus.Capacity, &s.Bus.CurrentSeats,
-			&s.Driver.ID, &s.Driver.FirstName, &s.Driver.LastName,
 			&s.Route.ID, &s.Route.Name, &s.Route.Description,
 		)
+		
+		// Set default driver info since we don't have it in DB
+		s.Driver.ID = "unknown"
+		s.Driver.FirstName = "System"
+		s.Driver.LastName = "Driver"
+		
 		if err != nil {
 			log.Printf("Error scanning schedule: %v", err)
 			continue
 		}
 		schedules = append(schedules, s)
+	}
+
+	// Initialize empty array if no schedules found
+	if schedules == nil {
+		schedules = []ScheduleResponse{}
 	}
 
 	c.JSON(http.StatusOK, schedules)
