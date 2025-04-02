@@ -17,6 +17,6 @@ type RouteBusStop struct {
 	StopOrder   int       `json:"stop_order" db:"stop_order"`
 	Timetable   []string  `json:"timetable" db:"timetable"`
 	StopDetails BusStop   `json:"stop_details"`
-	TravelTime  int       `json:"travel_time" db:"estimated_arrival_time"`
+	TravelTime  int       `json:"travel_time" db:"travel_time"`
 	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }

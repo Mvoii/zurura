@@ -10,6 +10,8 @@ import (
 	"github.com/Mvoii/zurura/internal/handlers"
 	"github.com/Mvoii/zurura/internal/middleware"
 	"github.com/Mvoii/zurura/internal/services/tracking"
+	"github.com/Mvoii/zurura/internal/services/payments"
+	"github.com/Mvoii/zurura/internal/services/booking"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -46,7 +48,14 @@ func main() {
 
 	r := gin.Default()
 
-	// init handlers
+	// Initialize payment service
+	paymentService := payments.NewMockPaymentService()
+	
+	// Initialize booking service with payment service
+	bookingService := booking.NewBookingService(db, paymentService)
+	
+	// Initialize handlers
+	bookingHandler := handlers.NewBookingHandler(db, bookingService)
 	authHandler := handlers.NewAuthHandler(db)
 	userHandler := handlers.NewUserHandler(db)
 	//bussHandler := handlers
@@ -89,7 +98,11 @@ func main() {
 			protected.POST("/auth/logout", authHandler.Logout)
 			// User profile
 			protected.GET("/me/profile", userHandler.GetProfile)
-			// protected.PUT("/users/profile", userHandler.UpdateProfile)
+			protected.PUT("/me/profile", userHandler.UpdateProfile)
+
+			// Add booking routes
+			protected.POST("/bookings", bookingHandler.CreateBooking)
+			protected.POST("/bookings/:id/cancel", bookingHandler.CancelBooking)
 		}
 
 		protected.Use(middleware.OperatorAuthRequired(db), middleware.RoleRequired("operator"))
@@ -102,7 +115,9 @@ func main() {
 			protected.POST("op/:route_id/stops", routeHandler.AddStopToRoute)
 
 			protected.POST("/op/schedules", scheduleHandler.CreateSchedule)
-			//protected.GET("/op.schedules", scheduleHandler.ListSchedule)/
+			protected.POST("/op/buses/:bus_id/assign", operatorHandler.AssignBusToRoute)
+			protected.GET("/op/buses/:bus_id/assignments", operatorHandler.GetBusAssignments)
+			protected.PUT("/op/buses/assignments/:assignment_id", operatorHandler.UpdateBusAssignment)
 		}
 
 		driverRoutes := api.Group("/driver")
