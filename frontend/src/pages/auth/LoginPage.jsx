@@ -68,7 +68,7 @@ export default function LoginPage() {
           <input
             id="email"
             type="email"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+            className={`w-full px-4 py-2 text-gray-900 border rounded-lg focus:ring-2 focus:outline-none
               ${errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
             placeholder="your@email.com"
             {...register('email')}
@@ -87,7 +87,7 @@ export default function LoginPage() {
             <input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+              className={`w-full px-4 py-2 text-gray-900 border rounded-lg focus:ring-2 focus:outline-none
                 ${errors.password ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
               placeholder="••••••••"
               {...register('password')}

@@ -77,7 +77,7 @@ export default function OperatorRegisterPage() {
             <input
               id="firstName"
               type="text"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+              className={`w-full px-4 py-2 border text-gray-900 rounded-lg focus:ring-2 focus:outline-none
                 ${errors.firstName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
               placeholder="John"
               {...register('firstName')}
@@ -94,7 +94,7 @@ export default function OperatorRegisterPage() {
             <input
               id="lastName"
               type="text"
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+              className={`w-full px-4 py-2 border text-gray-900 rounded-lg focus:ring-2 focus:outline-none
                 ${errors.lastName ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
               placeholder="Doe"
               {...register('lastName')}
@@ -113,7 +113,7 @@ export default function OperatorRegisterPage() {
           <input
             id="email"
             type="email"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+            className={`w-full px-4 py-2 text-gray-900 border rounded-lg focus:ring-2 focus:outline-none
               ${errors.email ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
             placeholder="your@email.com"
             {...register('email')}
@@ -131,7 +131,7 @@ export default function OperatorRegisterPage() {
           <input
             id="company"
             type="text"
-            className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+            className={`w-full text-gray-900 px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
               ${errors.company ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
             placeholder="Acme Transport Inc."
             {...register('company')}
@@ -150,7 +150,7 @@ export default function OperatorRegisterPage() {
             <input
               id="password"
               type={showPassword ? 'text' : 'password'}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+              className={`w-full text-gray-900 px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
                 ${errors.password ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
               placeholder="••••••••"
               {...register('password')}
@@ -178,7 +178,7 @@ export default function OperatorRegisterPage() {
             <input
               id="confirmPassword"
               type={showConfirmPassword ? 'text' : 'password'}
-              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
+              className={`w-full text-gray-900 px-4 py-2 border rounded-lg focus:ring-2 focus:outline-none
                 ${errors.confirmPassword ? 'border-red-500 focus:ring-red-200' : 'border-gray-300 focus:ring-blue-200'}`}
               placeholder="••••••••"
               {...register('confirmPassword')}
