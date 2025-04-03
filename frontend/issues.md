@@ -50,7 +50,7 @@ Create an intuitive login experience with proper validation and error handling.
 Develop separate registration flows for commuters and bus operators.
 
 **Tasks:**
-- Create multi-step registration form for commuters
+- Create registration form for commuters
 - Build specialized operator registration with company details
 - Implement comprehensive form validation
 - Add school selection dropdown from API data

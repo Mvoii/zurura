@@ -1,8 +1,15 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { 
+  loginUser, 
+  registerUser, 
+  registerOperator, 
+  logoutUser 
+} from '../api/authService';
+import { getSecureItem } from '../utils/secureStorage';
 
 // Create the context with a default undefined value
-const AuthContext = createContext(undefined);
+export const AuthContext = createContext(undefined);
 
 // Provider component
 export function AuthProvider({ children }) {
@@ -12,23 +19,19 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from secure storage
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        const storedToken = localStorage.getItem('token');
-        const userStr = localStorage.getItem('user');
+        const storedUser = getSecureItem('user');
+        const storedToken = getSecureItem('auth-token');
         
-        if (storedToken && userStr) {
-          const userData = JSON.parse(userStr);
-          setUser(userData);
+        if (storedToken && storedUser) {
+          setUser(storedUser);
           setToken(storedToken);
         }
       } catch (error) {
         console.error('Failed to initialize auth state:', error);
-        // Clear potentially corrupted state
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
       } finally {
         setIsLoading(false);
       }
@@ -43,36 +46,24 @@ export function AuthProvider({ children }) {
     setError(null);
     
     try {
-      const response = await fetch('/a/v1/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials),
-      });
+      // Use authService for login
+      const response = await loginUser(credentials);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Login failed');
-      }
-      
-      const data = await response.json();
-      
-      // Store auth data - use localStorage for persistent sessions, sessionStorage otherwise
-      const storage = credentials.persistent ? localStorage : sessionStorage;
-      
-      storage.setItem('token', data.token);
-      storage.setItem('user', JSON.stringify(data.user));
-      
-      setUser(data.user);
-      setToken(data.token);
+      // Update state
+      setUser(response.user);
+      setToken(response.token);
       
       // Redirect based on user role
-      if (data.user.role === 'operator') {
+      if (response.user.role === 'operator') {
         navigate('/operator/dashboard');
       } else {
         navigate('/commuter/routes');
       }
+      
+      return { success: true };
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
     }
@@ -83,26 +74,25 @@ export function AuthProvider({ children }) {
     setIsLoading(true);
     
     try {
-      if (token) {
-        await fetch('/a/v1/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-      }
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Clear state regardless of API success
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      // Use authService for logout
+      await logoutUser();
+      
+      // Update state
       setUser(null);
       setToken(null);
+      
+      navigate('/auth/login');
+      return { success: true };
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Still clear state even if API call fails
+      setUser(null);
+      setToken(null);
+      navigate('/auth/login');
+      return { success: false, error: error.message };
+    } finally {
       setIsLoading(false);
       setError(null);
-      navigate('/auth/login');
     }
   };
 
@@ -112,36 +102,26 @@ export function AuthProvider({ children }) {
     setError(null);
     
     try {
-      const endpoint = isOperator ? '/a/v1/auth/register/op' : '/a/v1/auth/register';
+      // Use authService for registration
+      const response = isOperator 
+        ? await registerOperator(data)
+        : await registerUser(data);
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Registration failed');
-      }
-      
-      const responseData = await response.json();
-      
-      // Store auth data
-      localStorage.setItem('token', responseData.token);
-      localStorage.setItem('user', JSON.stringify(responseData.user));
-      
-      setUser(responseData.user);
-      setToken(responseData.token);
+      // Update state
+      setUser(response.user);
+      setToken(response.token);
       
       // Redirect based on user role
-      if (responseData.user.role === 'operator') {
+      if (response.user.role === 'operator') {
         navigate('/operator/dashboard');
       } else {
         navigate('/commuter/routes');
       }
+      
+      return { success: true };
     } catch (error) {
       setError(error instanceof Error ? error.message : 'An unexpected error occurred');
+      return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
     }
@@ -175,13 +155,3 @@ export function AuthProvider({ children }) {
   );
 }
 
-// Custom hook to use the auth context
-export function useAuth() {
-  const context = useContext(AuthContext);
-  
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  
-  return context;
-}

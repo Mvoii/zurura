@@ -1,128 +1,114 @@
-/**
- * Authentication API service
- */
-import { clearAuthData, storeAuthData } from '../utils/token';
-
-const API_BASE_URL = '/a/v1';
+import { apiClient } from './client';
+import { setSecureItem, removeSecureItem, clearSecureStorage } from '../utils/secureStorage';
 
 /**
- * Login a user
- * @param {Object} credentials - Email and password
- * @returns {Promise<Object>} User data and token
+ * Login user with email and password
+ * @param {Object} credentials - User login credentials
+ * @returns {Promise} Response with token and user data
  */
-export async function loginUser(credentials) {
+export const loginUser = async (credentials) => {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(credentials),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Login failed');
+    const response = await apiClient.post('/auth/login', credentials);
+    
+    if (response.error) {
+      throw new Error(response.message || 'Login failed');
     }
-
-    const data = await response.json();
     
-    // Store the auth data
-    storeAuthData(data.token, data.user);
+    // Store token securely
+    setSecureItem('auth-token', response.token);
     
-    return data;
+    // Store user data
+    setSecureItem('user', response.user);
+    
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     throw error;
   }
-}
+};
 
 /**
- * Register a new user
+ * Register a new commuter
  * @param {Object} userData - User registration data
- * @param {boolean} isOperator - Whether this is an operator registration
- * @returns {Promise<Object>} User data and token
+ * @returns {Promise} Response with token and user data
  */
-export async function registerUser(userData, isOperator = false) {
+export const registerUser = async (userData) => {
   try {
-    const endpoint = isOperator ? '/auth/register/op' : '/auth/register';
+    const response = await apiClient.post('/auth/register', userData);
     
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(userData),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Registration failed');
+    if (response.error) {
+      throw new Error(response.message || 'Registration failed');
     }
-
-    const data = await response.json();
     
-    // Store the auth data
-    storeAuthData(data.token, data.user);
+    // Store token securely
+    setSecureItem('auth-token', response.token);
     
-    return data;
+    // Store user data
+    setSecureItem('user', response.user);
+    
+    return response;
   } catch (error) {
     console.error('Registration error:', error);
     throw error;
   }
-}
+};
 
 /**
- * Logout a user
- * @param {string} token - The JWT token
- * @returns {Promise<void>}
+ * Register a new operator
+ * @param {Object} operatorData - Operator registration data
+ * @returns {Promise} Response with token and user data
  */
-export async function logoutUser(token) {
+export const registerOperator = async (operatorData) => {
   try {
-    if (!token) {
-      // Just clear local auth data if no token
-      clearAuthData();
-      return;
+    const response = await apiClient.post('/auth/register/op', operatorData);
+    
+    if (response.error) {
+      throw new Error(response.message || 'Operator registration failed');
     }
     
-    await fetch(`${API_BASE_URL}/auth/logout`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Store token securely
+    setSecureItem('auth-token', response.token);
     
-    // Clear auth data regardless of server response
-    clearAuthData();
+    // Store user data
+    setSecureItem('user', response.user);
+    
+    return response;
   } catch (error) {
-    console.error('Logout error:', error);
-    // Clear auth data even if server request fails
-    clearAuthData();
+    console.error('Operator registration error:', error);
     throw error;
   }
-}
+};
 
 /**
- * Check if a token is valid with the server
- * @param {string} token - The JWT token to validate
- * @returns {Promise<boolean>}
+ * Logout user
+ * @returns {Promise} Response indicating logout success
  */
-export async function validateToken(token) {
+export const logoutUser = async () => {
   try {
-    if (!token) return false;
+    // Call the API endpoint to invalidate token server-side
+    const response = await apiClient.post('/auth/logout');
     
-    // We'll use the profile endpoint to check token validity
-    const response = await fetch(`${API_BASE_URL}/me/profile`, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-    });
+    // Clear secure storage regardless of response
+    removeSecureItem('auth-token');
+    removeSecureItem('user');
     
-    return response.ok;
+    return response;
   } catch (error) {
-    console.error('Token validation error:', error);
-    return false;
+    console.error('Logout error:', error);
+    
+    // Still clear secure storage even if API call fails
+    removeSecureItem('auth-token');
+    removeSecureItem('user');
+    
+    throw error;
   }
-}
+};
+
+/**
+ * Verify if user is authenticated
+ * @returns {boolean} True if user is authenticated
+ */
+export const isAuthenticated = () => {
+  const token = apiClient.getToken();
+  return !!token;
+};
