@@ -2,6 +2,9 @@ import { Routes, Route, Link } from 'react-router-dom'
 import { ArrowRight, Bus, MapPin, Clock, Shield } from 'lucide-react'
 import { AuthProvider } from '../lib/context/AuthContext'
 import LoginPage from './pages/auth/LoginPage'
+import RegisterPage from './pages/auth/RegisterPage'
+import CommuterRegisterPage from './pages/auth/CommuterRegisterPage'
+import OperatorRegisterPage from './pages/auth/OperatorRegisterPage'
 import './App.css'
 
 function HomePage() {
@@ -151,6 +154,9 @@ function App() {
         {/* Public routes */}
         <Route path="/" element={<HomePage />} />
         <Route path="/auth/login" element={<LoginPage />} />
+        <Route path="/auth/register" element={<RegisterPage />} />
+        <Route path="/auth/register/commuter" element={<CommuterRegisterPage />} />
+        <Route path="/auth/register/operator" element={<OperatorRegisterPage />} />
         
         {/* Add more routes as we create more pages */}
         {/* <Route path="/auth/register" element={<RegisterPage />} /> */}
