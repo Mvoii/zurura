@@ -1,12 +1,14 @@
 import { Routes, Route, Link } from 'react-router-dom'
 import { ArrowRight, Bus, MapPin, Clock, Shield } from 'lucide-react'
 import { AuthProvider } from '../lib/context/AuthContext'
+import { UserProvider } from '../lib/context/UserContext'
 import LoginPage from './pages/auth/LoginPage'
 import RegisterPage from './pages/auth/RegisterPage'
 import CommuterRegisterPage from './pages/auth/CommuterRegisterPage'
 import OperatorRegisterPage from './pages/auth/OperatorRegisterPage'
 import AppLayout from './layouts/AppLayout'
 import ProtectedRoute from './components/auth/ProtectedRoute'
+import ProfilePage from './pages/ProfilePage'
 import './App.css'
 
 function HomePage() {
@@ -152,35 +154,37 @@ function HomePage() {
 function App() {
   return (
     <AuthProvider>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<HomePage />} />
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
-        <Route path="/auth/register/commuter" element={<CommuterRegisterPage />} />
-        <Route path="/auth/register/operator" element={<OperatorRegisterPage />} />
-        
-        {/* Protected routes with AppLayout */}
-        <Route element={<AppLayout />}>
-          {/* Commuter routes */}
-          <Route path="/routes" element={<ProtectedRoute element={<div>Routes List</div>} />} />
-          <Route path="/bookings" element={<ProtectedRoute element={<div>My Bookings</div>} />} />
-          <Route path="/history" element={<ProtectedRoute element={<div>Trip History</div>} />} />
-          <Route path="/profile" element={<ProtectedRoute element={<div>User Profile</div>} />} />
+      <UserProvider>
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/auth/login" element={<LoginPage />} />
+          <Route path="/auth/register" element={<RegisterPage />} />
+          <Route path="/auth/register/commuter" element={<CommuterRegisterPage />} />
+          <Route path="/auth/register/operator" element={<OperatorRegisterPage />} />
           
-          {/* Operator routes */}
-          <Route path="/operator/dashboard" element={<ProtectedRoute element={<div>Operator Dashboard</div>} role="operator" />} />
-          <Route path="/operator/buses" element={<ProtectedRoute element={<div>Buses Management</div>} role="operator" />} />
-          <Route path="/operator/routes" element={<ProtectedRoute element={<div>Routes Management</div>} role="operator" />} />
-          <Route path="/operator/schedules" element={<ProtectedRoute element={<div>Schedules</div>} role="operator" />} />
-          <Route path="/operator/bookings" element={<ProtectedRoute element={<div>Bookings</div>} role="operator" />} />
-          <Route path="/operator/drivers" element={<ProtectedRoute element={<div>Drivers</div>} role="operator" />} />
-          <Route path="/operator/settings" element={<ProtectedRoute element={<div>Settings</div>} role="operator" />} />
-        </Route>
-        
-        {/* Fallback for 404 */}
-        <Route path="*" element={<div>Page Not Found</div>} />
-      </Routes>
+          {/* Protected routes with AppLayout */}
+          <Route element={<AppLayout />}>
+            {/* Commuter routes */}
+            <Route path="/routes" element={<ProtectedRoute element={<div>Routes List</div>} />} />
+            <Route path="/bookings" element={<ProtectedRoute element={<div>My Bookings</div>} />} />
+            <Route path="/history" element={<ProtectedRoute element={<div>Trip History</div>} />} />
+            <Route path="/profile" element={<ProtectedRoute element={<ProfilePage />} />} />
+            
+            {/* Operator routes */}
+            <Route path="/operator/dashboard" element={<ProtectedRoute element={<div>Operator Dashboard</div>} role="operator" />} />
+            <Route path="/operator/buses" element={<ProtectedRoute element={<div>Buses Management</div>} role="operator" />} />
+            <Route path="/operator/routes" element={<ProtectedRoute element={<div>Routes Management</div>} role="operator" />} />
+            <Route path="/operator/schedules" element={<ProtectedRoute element={<div>Schedules</div>} role="operator" />} />
+            <Route path="/operator/bookings" element={<ProtectedRoute element={<div>Bookings</div>} role="operator" />} />
+            <Route path="/operator/drivers" element={<ProtectedRoute element={<div>Drivers</div>} role="operator" />} />
+            <Route path="/operator/settings" element={<ProtectedRoute element={<div>Settings</div>} role="operator" />} />
+          </Route>
+          
+          {/* Fallback for 404 */}
+          <Route path="*" element={<div>Page Not Found</div>} />
+        </Routes>
+      </UserProvider>
     </AuthProvider>
   )
 }
