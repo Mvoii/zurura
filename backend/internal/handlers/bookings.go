@@ -3,35 +3,42 @@ package handlers
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
+	//"github.com/Mvoii/zurura/internal/errors"
 	"github.com/Mvoii/zurura/internal/models"
+	"github.com/Mvoii/zurura/internal/services/booking"
+	"github.com/Mvoii/zurura/internal/services/payments"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
+
+	// Rename the imported errors package to avoid conflict
+	bookingerrors "github.com/Mvoii/zurura/internal/errors"
 )
 
 type BookingHandler struct {
-	db          *sql.DB
-	paymentGate PaymentService
+	db             *sql.DB
+	bookingService *booking.BookingService
 }
 
-type PaymentService interface {
-	Process(c *gin.Context, amount float64) error
+func NewBookingHandler(db *sql.DB, bs *booking.BookingService) *BookingHandler {
+	return &BookingHandler{
+		db:             db,
+		bookingService: bs,
+	}
 }
 
-func NewBookingHandler(db *sql.DB, pg PaymentService) *BookingHandler {
-	return &BookingHandler{db: db, paymentGate: pg}
+type SeatMap struct {
+	SeatNumbers []string `json:"seat_numbers" binding:"required"`
+	Count       int      `json:"count" binding:"required"`
 }
 
 func (h *BookingHandler) CreateBooking(c *gin.Context) {
 	var req struct {
 		BusID         string   `json:"bus_id" binding:"required"`
-		SeatNumbers   []string `json:"seat_numbers" binding:"required"`
+		Seats         SeatMap  `json:"seats" binding:"required"`
 		PaymentMethod string   `json:"payment_method" binding:"required"`
 	}
 
@@ -40,111 +47,96 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 		return
 	}
 
-	// Get user from context
+    if len(req.Seats.SeatNumbers) != req.Seats.Count {
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Seat count does not match number of seats provided"})
+        return
+    }
+
 	userID, exists := c.Get("user_id")
 	if !exists {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
-	tx, err := h.db.Begin()
+	bookingReq := booking.CreateBookingRequest{
+		BusID:         req.BusID,
+		SeatNumbers:   req.Seats.SeatNumbers,
+		PaymentMethod: payments.PaymentMethod(req.PaymentMethod),
+		UserID:        userID.(string),
+	}
+
+	booking, err := h.bookingService.CreateBooking(c.Request.Context(), bookingReq)
 	if err != nil {
-		log.Printf("[ERROR] Transaction begin failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-	defer tx.Rollback()
-
-	// seat availability
-	var (
-		available        bool
-		capacity         int
-		currentOccupancy int
-		routeID          string
-	)
-	err = tx.QueryRow(`
-		SELECT 
-			b.capacity, 
-			b.current_occupancy, 
-			b.route_id,
-			(b.capacity - b.current_occupancy) >= $1
-		FROM buses b 
-		WHERE b.id = $2
-	`, len(req.SeatNumbers), req.BusID).Scan(
-		&capacity,
-		&currentOccupancy,
-		&routeID,
-		&available,
-	)
-	if err != nil {
-		log.Printf("[ERROR] Seat check failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Seat availability check failed"})
-		return
-	}
-
-	if !available {
-		c.JSON(http.StatusConflict, gin.H{"error": fmt.Sprintf("only %d available", capacity-currentOccupancy)})
-		return
-	}
-
-	fare, err := calculateFare(tx, req.BusID, len(req.SeatNumbers))
-	if err != nil {
-		log.Printf("[ERROR] Fare calculation failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Fare calculation failed"})
-		return
-	}
-
-	switch req.PaymentMethod {
-	case "bus_pass":
-		if err := deductFromPass(userID.(string), fare, tx); err != nil {
-			c.JSON(http.StatusPaymentRequired, gin.H{"error": err.Error()})
-			return
+		switch e := err.(type) {
+		case *bookingerrors.BookingError:
+			switch e.Code {
+			case "SEATS_UNAVAILABLE":
+				log.Printf("[ERROR] Seats unavailable: %v", e)
+				c.JSON(http.StatusConflict, gin.H{"error": e.Message})
+			case "INVALID_SEAT_SELECTION":
+				log.Printf("[ERROR] Invalid seat selection: %v", e)
+				c.JSON(http.StatusBadRequest, gin.H{"error": e.Message})
+			case "PAYMENT_FAILED":
+				log.Printf("[ERROR] Payment failed: %v", e)
+				c.JSON(http.StatusPaymentRequired, gin.H{"error": e.Message})
+			case "INVALID_FARE":
+				log.Printf("[ERROR] Invalid fare: %v", e)
+				c.JSON(http.StatusBadRequest, gin.H{"error": e.Message})
+			default:
+				log.Printf("[ERROR] Booking error: %v", e)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": e.Message})
+			}
+		default:
+			log.Printf("[ERROR] Booking error: %v", err)
+			// Check if the error message contains "zero amount payment" 
+			if err.Error() == "zero amount payment not allowed" {
+				c.JSON(http.StatusBadRequest, gin.H{
+					"error": "Payment validation failed: Zero fare amount. The route fare may not be properly configured.",
+				})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
+		return
+	}
 
-	default:
-		if err := h.paymentGate.Process(c, fare); err != nil {
-			log.Printf("[ERROR] %v", err)
-			c.JSON(http.StatusPaymentRequired, gin.H{"error": "Payment processing failed"})
-			return
+	c.JSON(http.StatusCreated, booking)
+}
+
+func (h *BookingHandler) CancelBooking(c *gin.Context) {
+	bookingID := c.Param("id")
+	userID, exists := c.Get("user_id")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	err := h.bookingService.CancelBooking(c.Request.Context(), bookingID, userID.(string))
+	if err != nil {
+		switch e := err.(type) {
+		case *bookingerrors.BookingError:
+			switch e.Code {
+			case "BOOKING_NOT_FOUND":
+				log.Printf("[ERROR] Booking not found: %v", e)
+				c.JSON(http.StatusNotFound, gin.H{"error": e.Message})
+			case "ALREADY_CANCELLED":
+				log.Printf("[ERROR] Booking already cancelled: %v", e)
+				c.JSON(http.StatusBadRequest, gin.H{"error": e.Message})
+			case "CANNOT_CANCEL_COMPLETED":
+				log.Printf("[ERROR] Cannot cancel completed booking: %v", e)
+				c.JSON(http.StatusBadRequest, gin.H{"error": e.Message})
+			default:
+				log.Printf("[ERROR] Booking error: %v", e)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": e.Message})
+			}
+		default:
+			log.Printf("[ERROR] Booking error: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
 		}
-	}
-
-	bookingID := uuid.New().String()
-	seatsJSON, _ := json.Marshal(models.SeatMap{
-		Numbers: req.SeatNumbers,
-		Count:   len(req.SeatNumbers),
-	})
-
-	_, err = tx.Exec(`
-		INSERT INTO bookings (id, user_id, bus_id, route_id, seats, fare, payment_method, status, created_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7, 'confirmed', NOW(), $8)
-	`, bookingID, userID, req.BusID, routeID, seatsJSON, fare, req.PaymentMethod, time.Now().Add(15*time.Minute))
-	if err != nil {
-		log.Printf("[ERROR] booking creation failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "booking creation failed"})
 		return
 	}
 
-	_, err = tx.Exec(`
-		UPDATE buses
-		SET current_company = current_occupancy + $1
-		WHERE id = $2`, len(req.SeatNumbers), req.BusID)
-
-	if err != nil {
-		log.Printf("[ERROR] bus update failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "bus update failed"})
-		return
-	}
-
-	if err := tx.Commit(); err != nil {
-		log.Printf("[ERROR] Transaction commit failed: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Transaction failed"})
-		return
-	}
-
-	c.JSON(http.StatusCreated, gin.H{
-		"booking_id": bookingID,
-		"expires_at": time.Now().Add(15 * time.Minute).Format(time.RFC3339),
-	})
+	c.JSON(http.StatusOK, gin.H{"message": "Booking cancelled successfully"})
 }
 
 // helpers
@@ -161,13 +153,16 @@ func deductFromPass(userID string, amount float64, tx *sql.Tx) error {
 	`, userID).Scan(&pass.ID, &pass.Balance)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Printf("[ERROR] No active bus pass found for user %s", userID)
 			return errors.New("no active bus pass found")
 		}
+		log.Printf("[ERROR] Database error: %v", err)
 		return fmt.Errorf("database error: %v", err)
 	}
 
 	if pass.Balance < amount {
-		return fmt.Errorf("insufficient pass balance. Availabe: %.2f", pass.Balance)
+		log.Printf("[ERROR] Insufficient pass balance. Available: %.2f", pass.Balance)
+		return fmt.Errorf("insufficient pass balance. Available: %.2f", pass.Balance)
 	}
 
 	_, err = tx.Exec(`
@@ -176,6 +171,7 @@ func deductFromPass(userID string, amount float64, tx *sql.Tx) error {
 		WHERE id = $2
 	`, amount, pass.ID)
 	if err != nil {
+		log.Printf("[ERROR] Balance update failed: %v", err)
 		return fmt.Errorf("balance update failed: %v", err)
 	}
 
@@ -198,18 +194,8 @@ func calculateFare(tx *sql.Tx, busID string, seatCount int) (float64, error) {
 		WHERE id = $1
 	`, busID).Scan(&farePerSeat)
 	if err != nil {
+		log.Printf("[ERROR] Could not retrieve fare info: %v", err)
 		return 0, fmt.Errorf("could not retrieve fare info")
 	}
 	return farePerSeat * float64(seatCount), nil
 }
-
-
-// Mock payment service (implement your actual payment gateway here)
-type MockPaymentService struct{}
-
-func (m *MockPaymentService) Process(c *gin.Context, amount float64) error {
-	// Implement actual payment gateway integration
-	// For now, just simulate successful payment
-	return nil 
-}
-
