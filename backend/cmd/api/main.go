@@ -79,6 +79,9 @@ func main() {
 		gin.Recovery(),
 	)
 
+	// Setup static file serving for uploaded files
+	r.Static("/uploads", "./uploads")
+
 	// public routes
 	api := r.Group("/a/v1")
 	{
@@ -99,10 +102,12 @@ func main() {
 			// User profile
 			protected.GET("/me/profile", userHandler.GetProfile)
 			protected.PUT("/me/profile", userHandler.UpdateProfile)
+			protected.POST("/me/profile/photo", userHandler.UploadProfilePhoto)
 
 			// Add booking routes
 			protected.POST("/bookings", bookingHandler.CreateBooking)
 			protected.POST("/bookings/:id/cancel", bookingHandler.CancelBooking)
+			protected.GET("/me/bookings", bookingHandler.GetUserBookings)
 		}
 
 		protected.Use(middleware.OperatorAuthRequired(db), middleware.RoleRequired("operator"))
@@ -136,6 +141,7 @@ func main() {
 		publicRoutes := api.Group("/routes")
 		{
 			publicRoutes.GET("/:route_id", routeHandler.GetRouteDetails)
+			publicRoutes.GET("", routeHandler.FindRoutes)
 		}
 
 		// Health check

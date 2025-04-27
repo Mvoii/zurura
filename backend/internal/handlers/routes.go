@@ -45,10 +45,10 @@ func (h *RouteHandler) GetRouteDetails(c *gin.Context) {
 
 	// Get route metadata
 	err := h.db.QueryRow(`
-		SELECT id, route_name, description, created_at, updated_at
+		SELECT id, route_name, description, origin, destination, created_at, updated_at
 		FROM bus_routes
 		WHERE id = $1
-		`, routeID).Scan(&route.ID, &route.RouteName, &route.Description, &route.CreatedAt, &route.UpdatedAt)
+	`, routeID).Scan(&route.ID, &route.RouteName, &route.Description, &route.Origin, &route.Destination, &route.CreatedAt, &route.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Route not found"})
@@ -59,9 +59,18 @@ func (h *RouteHandler) GetRouteDetails(c *gin.Context) {
 		return
 	}
 
-	// get route sops with full details
+	// Get route stops with full details
 	rows, err := h.db.Query(`
-		SELECT s.id, s.name, /* s.landmark_decription, */ s.latitude, s.longitude, s.created_at, s.updated_at, rs.stop_order, rs.timetable, rs.estimated_arrival_time
+		SELECT 
+			s.id, 
+			s.name, 
+			s.latitude, 
+			s.longitude, 
+			s.created_at, 
+			s.updated_at, 
+			rs.stop_order, 
+			rs.timetable, 
+			rs.estimated_arrival_time
 		FROM route_bus_stops rs
 		JOIN bus_stops s ON rs.bus_stop_id = s.id
 		WHERE rs.route_id = $1
@@ -79,21 +88,38 @@ func (h *RouteHandler) GetRouteDetails(c *gin.Context) {
 		var timetable []string
 		stop.StopDetails = models.BusStop{}
 
-		rows.Scan(
+		// Make sure the number of fields matches the query 
+		err := rows.Scan(
 			&stop.StopDetails.ID,
 			&stop.StopDetails.Name,
-			/* &stop.StopDetails.LandmarkDescription, */
 			&stop.StopDetails.Latitude,
 			&stop.StopDetails.Longitude,
 			&stop.StopDetails.CreatedAt,
 			&stop.StopDetails.UpdatedAt,
 			&stop.StopOrder,
-			&timetable,
+			pq.Array(&timetable),
 			&stop.TravelTime,
 		)
+		
+		if err != nil {
+			log.Printf("[ERROR] Failed to scan stop row: %v", err)
+			continue
+		}
 
 		stop.Timetable = timetable
 		stops = append(stops, stop)
+	}
+	
+	// Check for errors after iterating through rows
+	if err = rows.Err(); err != nil {
+		log.Printf("[ERROR] Error iterating through stops: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error processing stops data"})
+		return
+	}
+
+	// Return empty array if no stops
+	if stops == nil {
+		stops = []models.RouteBusStop{}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -155,9 +181,9 @@ func (h *RouteHandler) CreateRoute(c *gin.Context) {
 	routeID := uuid.New().String()
 
 	_, err := h.db.Exec(`
-		INSERT INTO bus_routes (id, route_name, description)
-		VALUES ($1, $2, $3)`,
-		routeID, route.RouteName, route.Description)
+		INSERT INTO bus_routes (id, route_name, description, origin, destination)
+		VALUES ($1, $2, $3, $4, $5)`,
+		routeID, route.RouteName, route.Description, route.Origin, route.Destination)
 
 	if err != nil {
 		log.Printf("[ERROR] %v", err)
@@ -168,6 +194,8 @@ func (h *RouteHandler) CreateRoute(c *gin.Context) {
 		"id":          routeID,
 		"route_name":  route.RouteName,
 		"description": route.Description,
+		"origin":      route.Origin,
+		"destination": route.Destination,
 		"created_at":  time.Now(),
 	})
 }
@@ -285,4 +313,183 @@ func (h *RouteHandler) AddStopToRoute(c *gin.Context) {
 			"estimated_arrival_time": req.TravelTime,
 		},
 	})
+}
+
+// FindRoutes searches for routes based on origin and destination
+func (h *RouteHandler) FindRoutes(c *gin.Context) {
+	originQuery := c.Query("origin")
+	destinationQuery := c.Query("destination")
+	
+	if originQuery == "" && destinationQuery == "" {
+		// If no search parameters are provided, return all routes with pagination
+		limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+		offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+		
+		// Query to get routes with their origin and destination
+		query := `
+			SELECT 
+				id AS route_id,
+				route_name,
+				description,
+				origin,
+				destination,
+				base_fare,
+				created_at,
+				updated_at
+			FROM 
+				bus_routes
+			ORDER BY 
+				route_name
+			LIMIT $1 OFFSET $2
+		`
+		
+		rows, err := h.db.Query(query, limit, offset)
+		if err != nil {
+			log.Printf("[ERROR] Failed to query routes: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch routes"})
+			return
+		}
+		defer rows.Close()
+		
+		var routes []map[string]interface{}
+		for rows.Next() {
+			var route struct {
+				ID          string    `db:"route_id"`
+				RouteName   string    `db:"route_name"`
+				Description string    `db:"description"`
+				Origin      string    `db:"origin"`
+				Destination string    `db:"destination"`
+				BaseFare    float64   `db:"base_fare"`
+				CreatedAt   time.Time `db:"created_at"`
+				UpdatedAt   time.Time `db:"updated_at"`
+			}
+			
+			err := rows.Scan(
+				&route.ID,
+				&route.RouteName,
+				&route.Description,
+				&route.Origin,
+				&route.Destination,
+				&route.BaseFare,
+				&route.CreatedAt,
+				&route.UpdatedAt,
+			)
+			
+			if err != nil {
+				log.Printf("[ERROR] Failed to scan route: %v", err)
+				continue
+			}
+			
+			routeMap := map[string]interface{}{
+				"id":          route.ID,
+				"route_name":  route.RouteName,
+				"description": route.Description,
+				"origin":      route.Origin,
+				"destination": route.Destination,
+				"base_fare":   route.BaseFare,
+				"created_at":  route.CreatedAt,
+				"updated_at":  route.UpdatedAt,
+			}
+			
+			routes = append(routes, routeMap)
+		}
+		
+		c.JSON(http.StatusOK, gin.H{"routes": routes})
+		return
+	}
+	
+	// If origin or destination is provided, search for matching routes
+	query := `
+		SELECT 
+			id AS route_id,
+			route_name,
+			description,
+			origin,
+			destination,
+			base_fare,
+			created_at,
+			updated_at
+		FROM 
+			bus_routes
+		WHERE 
+			1=1
+	`
+	
+	var params []interface{}
+	paramIndex := 1
+	
+	if originQuery != "" {
+		query += fmt.Sprintf(" AND LOWER(origin) LIKE LOWER($%d)", paramIndex)
+		params = append(params, "%"+originQuery+"%")
+		paramIndex++
+	}
+	
+	if destinationQuery != "" {
+		query += fmt.Sprintf(" AND LOWER(destination) LIKE LOWER($%d)", paramIndex)
+		params = append(params, "%"+destinationQuery+"%")
+		paramIndex++
+	}
+	
+	query += " ORDER BY route_name LIMIT 50"
+	
+	var rows *sql.Rows
+	var err error
+	
+	if len(params) > 0 {
+		rows, err = h.db.Query(query, params...)
+	} else {
+		rows, err = h.db.Query(query)
+	}
+	
+	if err != nil {
+		log.Printf("[ERROR] Failed to query routes: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch routes"})
+		return
+	}
+	defer rows.Close()
+	
+	var routes []map[string]interface{}
+	for rows.Next() {
+		var route struct {
+			ID          string    `db:"route_id"`
+			RouteName   string    `db:"route_name"`
+			Description string    `db:"description"`
+			Origin      string    `db:"origin"`
+			Destination string    `db:"destination"`
+			BaseFare    float64   `db:"base_fare"`
+			CreatedAt   time.Time `db:"created_at"`
+			UpdatedAt   time.Time `db:"updated_at"`
+		}
+		
+		err := rows.Scan(
+			&route.ID,
+			&route.RouteName,
+			&route.Description,
+			&route.Origin,
+			&route.Destination,
+			&route.BaseFare,
+			&route.CreatedAt,
+			&route.UpdatedAt,
+		)
+		
+		if err != nil {
+			log.Printf("[ERROR] Failed to scan route: %v", err)
+			continue
+		}
+		
+		routeMap := map[string]interface{}{
+			"id":          route.ID,
+			"route_name":  route.RouteName,
+			"description": route.Description,
+			"origin":      route.Origin,
+			"destination": route.Destination,
+			"base_fare":   route.BaseFare,
+			"created_at":  route.CreatedAt,
+			"updated_at":  route.UpdatedAt,
+		}
+		
+		routes = append(routes, routeMap)
+	}
+	
+	c.JSON(http.StatusOK, gin.H{"routes": routes})
 }

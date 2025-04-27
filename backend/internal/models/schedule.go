@@ -9,7 +9,7 @@ type Schedule struct {
 	StopID             string    `json:"stop_id" db:"stop_id"`
 	DayOfWeek          int       `json:"day_of_week" db:"day_of_week"`
 	IsActive           bool      `json:"is_active" db:"is_active"`
-	ScheduledDeparture time.Time `json:"scheduled_departure" db:"scheduled_departure"`
+	ScheduledDeparture time.Time `json:"departure_time" db:"scheduled_departure"`
 	ScheduledArrival   time.Time `json:"scheduled_arrival" db:"scheduled_arrival"`
 	CreatedAt          time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt          time.Time `json:"updated_at" db:"updated_at"`

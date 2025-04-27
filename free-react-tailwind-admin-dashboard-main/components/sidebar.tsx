@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bus, Menu } from "lucide-react"
+import { Bus, Menu, MapPin, RouteIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,15 @@ export function Sidebar({ className, items, ...props }: SidebarProps) {
   // Filter out duplicate navigation items that are already in the top navbar
   const filteredItems = items.filter((item) => !["Notifications", "Profile", "Settings"].includes(item.title))
 
+  const commuterLinks = [
+    ...filteredItems,
+    {
+      title: "Find Routes",
+      href: "/commuter/find-routes",
+      icon: RouteIcon
+    },
+  ]
+
   return (
     <>
       <Sheet open={open} onOpenChange={setOpen}>
@@ -43,7 +52,7 @@ export function Sidebar({ className, items, ...props }: SidebarProps) {
             <span className="text-lg font-bold gradient-text">Zurura</span>
           </div>
           <nav className="grid gap-2 text-sm">
-            {filteredItems.map((item, index) => {
+            {commuterLinks.map((item, index) => {
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
@@ -79,7 +88,7 @@ export function Sidebar({ className, items, ...props }: SidebarProps) {
             <span className="text-lg font-bold gradient-text">Zurura</span>
           </div>
           <nav className="grid gap-1 px-2">
-            {filteredItems.map((item, index) => {
+            {commuterLinks.map((item, index) => {
               const Icon = item.icon
               const isActive = pathname === item.href
               return (
