@@ -160,3 +160,11 @@ func main() {
 		}
 	}
 }
+
+/// POST /passes (Create new pass)
+/// 
+/// POST /passes/{id}/topup (Add funds)
+/// 
+/// GET /passes/{id}/balance (Check balance)
+/// 
+/// GET /passes/{id}/transactions (Transaction history)
