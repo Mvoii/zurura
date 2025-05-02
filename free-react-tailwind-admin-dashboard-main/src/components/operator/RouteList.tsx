@@ -74,8 +74,6 @@ const RouteList = ({ showOperatorControls = true }) => {
     .filter(
       (route) =>
         (route.route_name?.toLowerCase() || "").includes(searchTerm.toLowerCase())
-        // (route.origin?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-        // (route.destination?.toLowerCase() || "").includes(searchTerm.toLowerCase())
     )
     .sort((a, b) => {
       const fieldA = a[sortField as keyof typeof a] || "";
@@ -199,23 +197,22 @@ const RouteList = ({ showOperatorControls = true }) => {
                         Destination {renderSortIcon("destination")}
                       </div>
                     </TableCell>
-                    <TableCell isHeader>Description</TableCell>
                     <TableCell
                       isHeader
                       className="cursor-pointer"
-                      onClick={() => handleSort("stops_count")}
+                      onClick={() => handleSort("description")}
                     >
                       <div className="flex items-center">
-                        Stops {renderSortIcon("stops_count")}
+                        Description {renderSortIcon("description")}
                       </div>
                     </TableCell>
                     <TableCell
                       isHeader
                       className="cursor-pointer"
-                      onClick={() => handleSort("status")}
+                      onClick={() => handleSort("created_at")}
                     >
                       <div className="flex items-center">
-                        Status {renderSortIcon("status")}
+                        Created {renderSortIcon("created_at")}
                       </div>
                     </TableCell>
                     <TableCell isHeader className="text-right">
@@ -229,17 +226,21 @@ const RouteList = ({ showOperatorControls = true }) => {
                       <TableCell className="font-medium">
                         {route.route_name}
                       </TableCell>
-                      {/* <TableCell>{route.origin}</TableCell> */}
-                      {/* <TableCell>{route.destination}</TableCell> */}
+                      <TableCell>{route.origin || '-'}</TableCell>
+                      <TableCell>{route.destination || '-'}</TableCell>
                       <TableCell className="max-w-xs truncate">
                         {route.description && route.description.length > 40
                           ? `${route.description.substring(0, 40)}...`
-                          : route.description}
+                          : route.description || '-'}
                       </TableCell>
-                      {/* <TableCell>{route.stops_count || 0}</TableCell> */}
+                      <TableCell>
+                        {route.created_at 
+                          ? new Date(route.created_at).toLocaleDateString()
+                          : '-'}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          {/* View Stops button (assuming all authenticated users can view) */}
+                          {/* View Stops button */}
                           {can("view", "stop") && (
                             <Button
                               variant="outline"
@@ -253,14 +254,14 @@ const RouteList = ({ showOperatorControls = true }) => {
                             </Button>
                           )}
 
-                          {/* Show Edit/Delete only if allowed and controls are enabled */}
+                          {/* Edit/Delete buttons */}
                           {showOperatorControls && (
                             <>
                               {routeAccess.canEdit && (
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => handleEdit(route)} // Use handleEdit
+                                  onClick={() => handleEdit(route)}
                                   className="p-2"
                                 >
                                   <Edit2 size={16} />
