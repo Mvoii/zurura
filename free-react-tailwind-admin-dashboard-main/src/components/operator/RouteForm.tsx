@@ -31,15 +31,15 @@ export const RouteForm: React.FC<RouteFormProps> = ({
   const [formData, setFormData] = useState({
     route_name: "",
     description: "",
-    // origin: "",
-    // destination: ""
+    origin: "",
+    destination: ""
   });
   
   const [formErrors, setFormErrors] = useState({
     route_name: "",
     description: "",
-    // origin: "",
-    // destination: ""
+    origin: "",
+    destination: ""
   });
 
   // Populate form with route data when in edit mode
@@ -48,16 +48,16 @@ export const RouteForm: React.FC<RouteFormProps> = ({
       setFormData({
         route_name: editingRoute.route_name || '',
         description: editingRoute.description || '',
-        // origin: editingRoute.origin || '',
-        // destination: editingRoute.destination || ''
+        origin: editingRoute.origin || '',
+        destination: editingRoute.destination || ''
       });
     } else {
       // Reset form for new route
       setFormData({
         route_name: "",
         description: "",
-        // origin: "",
-        // destination: ""
+        origin: "",
+        destination: ""
       });
     }
     
@@ -65,8 +65,8 @@ export const RouteForm: React.FC<RouteFormProps> = ({
     setFormErrors({
       route_name: "",
       description: "",
-    //   origin: "",
-    //   destination: ""
+      origin: "",
+      destination: ""
     });
     
   }, [editingRoute, isOpen]);
@@ -86,8 +86,8 @@ export const RouteForm: React.FC<RouteFormProps> = ({
     const errors = {
       route_name: "",
       description: "",
-    //   origin: "",
-    //   destination: ""
+      origin: "",
+      destination: ""
     };
     
     // Route name validation
@@ -109,22 +109,22 @@ export const RouteForm: React.FC<RouteFormProps> = ({
     }
     
     // Origin validation - required for UI but not sent to backend
-    // if (!formData.origin.trim()) {
-    //   errors.origin = "Origin is required";
-    //   isValid = false;
-    // } else if (formData.origin.length > 100) {
-    //   errors.origin = "Origin cannot exceed 100 characters";
-    //   isValid = false;
-    // }
+    if (!formData.origin.trim()) {
+      errors.origin = "Origin is required";
+      isValid = false;
+    } else if (formData.origin.length > 100) {
+      errors.origin = "Origin cannot exceed 100 characters";
+      isValid = false;
+    }
     
-    // // Destination validation - required for UI but not sent to backend
-    // if (!formData.destination.trim()) {
-    //   errors.destination = "Destination is required";
-    //   isValid = false;
-    // } else if (formData.destination.length > 100) {
-    //   errors.destination = "Destination cannot exceed 100 characters";
-    //   isValid = false;
-    // }
+    // Destination validation - required for UI but not sent to backend
+    if (!formData.destination.trim()) {
+      errors.destination = "Destination is required";
+      isValid = false;
+    } else if (formData.destination.length > 100) {
+      errors.destination = "Destination cannot exceed 100 characters";
+      isValid = false;
+    }
     
     setFormErrors(errors);
     return isValid;
@@ -244,7 +244,7 @@ export const RouteForm: React.FC<RouteFormProps> = ({
                 )}
               </div>
               
-              {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="origin">
                     Origin<span className="text-error-500">*</span>
@@ -280,7 +280,7 @@ export const RouteForm: React.FC<RouteFormProps> = ({
                     <p className="mt-1 text-sm text-error-500">{formErrors.destination}</p>
                   )}
                 </div>
-              </div> */}
+              </div>
             </div>
             
             <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
