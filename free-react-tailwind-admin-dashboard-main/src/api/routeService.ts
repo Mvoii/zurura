@@ -5,8 +5,8 @@ export interface RouteBackendData {
   id?: string;
   route_name: string;
   description: string;
-  // origin?: string;
-  // destination?: string;
+  origin?: string;
+  destination?: string;
   created_at?: string;
   updated_at?: string;
   // stops?: RouteStop[];
@@ -16,8 +16,8 @@ export interface RouteFrontendData {
   id?: string;
   route_name: string;
   description: string;
-  // origin?: string;
-  // destination?: string;
+  origin?: string;
+  destination?: string;
   created_at?: string;
   updated_at?: string;
   // stops_count?: number;
@@ -48,6 +48,14 @@ export interface ApiResponse<T> {
   message?: string;
 }
 
+// Define interface for route search parameters
+export interface RouteSearchParams {
+  origin?: string;
+  destination?: string;
+  limit?: number;
+  offset?: number;
+}
+
 /**
  * Map frontend route object to backend format
  */
@@ -59,6 +67,8 @@ const mapRouteForBackend = (routeData: RouteFrontendData | null): RouteBackendDa
     id: routeData.id,
     route_name: routeData.route_name || '',
     description: routeData.description || '',
+    origin: routeData.origin,
+    destination: routeData.destination,
     // Don't send origin/    destination as they aren't handled by the backend
   };
 };
@@ -72,8 +82,8 @@ const mapRouteForFrontend = (routeData: RouteBackendData | null): RouteFrontendD
     id: routeData.id,
     route_name: routeData.route_name || '',
     description: routeData.description || '',
-    // origin: routeData.origin,
-    // destination: routeData.destination,
+    origin: routeData.origin,
+    destination: routeData.destination,
     created_at: routeData.created_at,
     updated_at: routeData.updated_at,
     // stops_count: routeData.stops?.length || 0
@@ -81,20 +91,57 @@ const mapRouteForFrontend = (routeData: RouteBackendData | null): RouteFrontendD
 };
 
 /**
- * Get all routes
+ * Get all routes with optional filtering
  */
-export const getRoutes = async (): Promise<RouteFrontendData[]> => {
+export const getRoutes = async (params: RouteSearchParams = {}): Promise<RouteFrontendData[]> => {
   try {
-    const response = await apiClient.get<ApiResponse<RouteBackendData[]>>('/routes');
+    const { origin, destination, limit, offset } = params;
+    const queryParams = new URLSearchParams();
     
-    if (!response.success || !Array.isArray(response.data)) {
-      console.error('Failed to fetch routes:', response.message || 'Unknown error');
+    // Add search parameters to query string if they exist
+    if (origin) queryParams.append('origin', origin);
+    if (destination) queryParams.append('destination', destination);
+    if (limit) queryParams.append('limit', limit.toString());
+    if (offset) queryParams.append('offset', offset.toString());
+    
+    // Construct the URL with query parameters
+    const queryString = queryParams.toString();
+    const url = `/routes${queryString ? `?${queryString}` : ''}`;
+    
+    // Update the type to match the actual response format
+    interface RoutesResponse {
+      routes: RouteBackendData[];
+    }
+    
+    const response = await apiClient.get<RoutesResponse>(url);
+    
+    console.log('Response:', response);
+
+    // Check if response is null or undefined
+    if (!response) {
+      console.error('Failed to fetch routes: Response is null or undefined');
       return [];
     }
     
-    return response.data.map(route => mapRouteForFrontend(route) || {
-      route_name: '',
-      description: ''
+    // Check if the response has the routes property and it's an array
+    if (!response.routes || !Array.isArray(response.routes)) {
+      console.error('Failed to fetch routes: Response does not contain routes array');
+      return [];
+    }
+
+    // Map the routes array
+    return response.routes.map(route => {
+      const mappedRoute = mapRouteForFrontend(route);
+      if (!mappedRoute) {
+        // Return a default route object if mapping fails
+        return {
+          route_name: '',
+          description: '',
+          origin: '',
+          destination: '',
+        };
+      }
+      return mappedRoute;
     });
   } catch (error) {
     console.error('Failed to fetch routes:', error);
@@ -136,16 +183,20 @@ export const createRoute = async (routeData: RouteFrontendData): Promise<RouteFr
       throw new Error('Invalid route data');
     }
     
-    const response = await apiClient.post<ApiResponse<RouteBackendData>>(
+    const response = await apiClient.post<RouteBackendData>(
       '/op/routes',
       backendData as unknown as Record<string, unknown>
     );
+    console.log('Response:', response);
+    // if (!response.success || !response.data) {
+    //   throw new Error(response.message || 'Failed to create route');
+    // }
     
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to create route');
+    if (!response) {
+      throw new Error('Failed to create route');
     }
-    
-    const mappedResponse = mapRouteForFrontend(response.data);
+
+    const mappedResponse = mapRouteForFrontend(response);
     if (!mappedResponse) {
       throw new Error('Failed to map route response data');
     }
