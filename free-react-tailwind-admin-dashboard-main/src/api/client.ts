@@ -163,8 +163,8 @@ export const apiClient = {
         // If not on login page, redirect
         if (typeof window !== 'undefined' && 
             window.location && 
-            !window.location.pathname.includes('/auth/login')) {
-          window.location.href = '/auth/login';
+            !window.location.pathname.includes('/auth/signin')) {
+          window.location.href = '/auth/signin';
         }
       }
 
