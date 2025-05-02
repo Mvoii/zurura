@@ -93,7 +93,7 @@ zurura/
             ├── Operator/                // New: Operator-specific pages
             │   ├── DashboardPage.tsx      // Operator landing page (can host summary info)
             │   ├── ManageBusesPage.tsx    // Hosts OperatorBusList (operator data)
-            │   ├── ManageRoutesPage.tsx   // Hosts CreateRouteForm (modal), and potentially display public routes for context for stop management. *Does NOT list operator-created routes specifically.*
+            │   ├── ManageRoutesPage.tsx   // Hosts RouteForm (modal), and potentially display public routes for context for stop management. *Does NOT list operator-created routes specifically.*
             │   ├── ManageRouteStopsPage.tsx // Hosts OperatorRouteStopList and AddStopToRouteForm (modal) for a *selected* public route.
             │   ├── ManageSchedulesPage.tsx // Hosts ScheduleForm (modal). *Does NOT list operator-created schedules specifically.*
             │   └── ManageAssignmentsPage.tsx // Hosts OperatorBusAssignmentList and AssignmentForm (modal) (operator data)
