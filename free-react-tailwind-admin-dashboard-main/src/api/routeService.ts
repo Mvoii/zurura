@@ -9,7 +9,7 @@ export interface RouteBackendData {
   destination?: string;
   created_at?: string;
   updated_at?: string;
-  // stops?: RouteStop[];
+  stops?: RouteStop[];
 }
 
 export interface RouteFrontendData {
@@ -20,21 +20,22 @@ export interface RouteFrontendData {
   destination?: string;
   created_at?: string;
   updated_at?: string;
-  // stops_count?: number;
+  stops?: RouteStop[];
 }
 
 export interface RouteStop {
-  id?: string;
-  stop_id?: string;
-  route_id?: string;
-  name?: string;
+  id: string; // stop_uuid
+  name: string;
+  latitude: number;
+  longitude: number;
+  stop_order: number;
+  timetable: string[]; // Array of time strings like "08:00"
+  travel_time: number | null; // Travel time in minutes from previous stop/origin
+  // Add other stop-related fields if necessary based on actual backend implementation
   landmark_description?: string;
-  latitude?: number;
-  longitude?: number;
-  timetable?: string[];
-  travel_time?: number;
-  stop_order?: number;
-  stop_details?: unknown;
+  created_at?: string;
+  updated_at?: string;
+  stop_id?: string; // Alias for id, if used elsewhere
 }
 
 export interface StopOrder {
@@ -69,6 +70,9 @@ const mapRouteForBackend = (routeData: RouteFrontendData | null): RouteBackendDa
     description: routeData.description || '',
     origin: routeData.origin,
     destination: routeData.destination,
+    created_at: routeData.created_at,
+    updated_at: routeData.updated_at,
+    stops: routeData.stops,
     // Don't send origin/    destination as they aren't handled by the backend
   };
 };
@@ -86,7 +90,7 @@ const mapRouteForFrontend = (routeData: RouteBackendData | null): RouteFrontendD
     destination: routeData.destination,
     created_at: routeData.created_at,
     updated_at: routeData.updated_at,
-    // stops_count: routeData.stops?.length || 0
+    stops: routeData.stops
   };
 };
 
@@ -154,18 +158,23 @@ export const getRoutes = async (params: RouteSearchParams = {}): Promise<RouteFr
  */
 export const getRouteById = async (id: string): Promise<RouteFrontendData> => {
   try {
-    const response = await apiClient.get<ApiResponse<RouteBackendData>>(`/routes/${id}`);
+    const response = await apiClient.get<RouteBackendData>(`/routes/${id}`);
     
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Route not found');
+    // if (!response.success || !response.data) {
+    //   throw new Error(response.message || 'Route not found');
+    // }
+
+    console.log('Response:', response);
+    if (!response) {
+      throw new Error('Route not found');
     }
     
-    const mappedRoute = mapRouteForFrontend(response.data);
+    const mappedRoute = mapRouteForFrontend(response);
     if (!mappedRoute) {
       throw new Error('Failed to map route data');
     }
-    
-    return mappedRoute;
+    console.log('Mapped route:', mappedRoute, response);
+    return response;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch route';
     console.error(`Failed to fetch route ${id}:`, errorMessage);
