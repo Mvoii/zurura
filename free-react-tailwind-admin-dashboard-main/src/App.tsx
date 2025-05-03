@@ -25,6 +25,8 @@ import RouteList from "./components/operator/RouteList";
 import { isAuthenticated, getCurrentUser, isOperator } from './utils/token';
 import { BusProvider } from './context/BusContext';
 import BusList from "./components/operator/BusList";
+import FindRoutesPage from "./pages/Commuter/FindRoutesPage";
+import RouteDetailsPage from "./pages/Commuter/RouteDetailsPage";
 
 export default function App() {
   console.log('App loaded - Auth state:', {
@@ -54,7 +56,8 @@ export default function App() {
             }>
               {/* General authenticated routes */}
               <Route path="/schedules" element={<div>Schedules List</div>} />
-              <Route path="/routes" element={<RouteList showOperatorControls={false} />} />
+              <Route path="/routes" element={<FindRoutesPage/>} />
+              <Route path="/routes/:routeId" element={<RouteDetailsPage />} />
 
               {/* Commuter-specific routes */}
               <Route element={<ProtectedRoute requiredRole="commuter" />}>
