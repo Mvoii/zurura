@@ -12,7 +12,8 @@ import {
   reorderRouteStops,
   RouteFrontendData,
   RouteStop,
-  StopOrder
+  StopOrder,
+  RouteSearchParams
 } from '../api/routeService';
 
 // Operation result type
@@ -30,7 +31,8 @@ interface RouteContextType {
   isLoading: boolean;
   error: string | null;
   
-  fetchRoutes: () => Promise<RouteFrontendData[]>;
+  // Updated signature to accept search parameters
+  fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
@@ -65,14 +67,16 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
   const [error, setError] = useState<string | null>(null);
 
   /**
-   * Fetch all available routes
+   * Fetch all available routes with optional filtering
    */
-  const fetchRoutes = useCallback(async (): Promise<RouteFrontendData[]> => {
+  const fetchRoutes = useCallback(async (params: RouteSearchParams = {}): Promise<RouteFrontendData[]> => {
     setIsLoading(true);
     setError(null);
     
     try {
-      const routes = await getRoutes();
+      // Pass the search parameters to getRoutes
+      const routes = await getRoutes(params);
+      console.log('Fetched routes:', routes);
       setRoutes(routes);
       return routes;
     } catch (error) {
@@ -93,6 +97,10 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     
     try {
       const route = await getRouteById(id);
+      // if (!route) {
+      //   throw new Error(`Route with ID ${id} not found`);
+      // }
+      console.log('Fetched route:', route);
       setCurrentRoute(route);
       return route;
     } catch (error) {
@@ -103,7 +111,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, []);
-
+// console.log('current Fetched route:', currentRoute);
   /**
    * Add a new route
    */
