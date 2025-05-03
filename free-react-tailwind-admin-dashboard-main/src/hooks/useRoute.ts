@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import RouteContext from '../context/RouteContext';
-import type { RouteFrontendData, RouteStop, StopOrder } from '../api/routeService';
+import type { RouteFrontendData, RouteStop, StopOrder, RouteSearchParams } from '../api/routeService';
 
 /**
  * Interface for the result of route operations
@@ -22,8 +22,8 @@ export interface UseRouteReturn {
   isLoading: boolean;
   error: string | null;
   
-  // Route operations
-  fetchRoutes: () => Promise<RouteFrontendData[]>;
+  // Route operations with updated fetchRoutes signature
+  fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
@@ -40,7 +40,6 @@ export interface UseRouteReturn {
   clearCurrentRoute: () => void;
   clearError: () => void;
 }
-
 /**
  * Custom hook to access route functionality throughout the app
  * @returns Route state and methods
