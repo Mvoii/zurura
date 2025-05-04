@@ -324,24 +324,8 @@ export const deleteRoute = async (id: string): Promise<void> => {
   }
 };
 
-/**
- * Get stops for a route
- */
-export const getRouteStops = async (routeId: string): Promise<RouteStop[]> => {
-  try {
-    const response = await apiClient.get<ApiResponse<RouteStop[]>>(`/routes/${routeId}/stops`);
-    
-    if (!response.success || !Array.isArray(response.data)) {
-      console.error(`Failed to fetch stops for route ${routeId}:`, response.message);
-      return [];
-    }
-    
-    return response.data;
-  } catch (error) {
-    console.error(`Failed to fetch stops for route ${routeId}:`, error);
-    return [];
-  }
-};
+// REMOVED: The getRouteStops function has been removed as it corresponds to a non-existent backend endpoint
+// The routes and their stops are now fetched together in a single call via getRouteById
 
 /**
  * Add a stop to a route
