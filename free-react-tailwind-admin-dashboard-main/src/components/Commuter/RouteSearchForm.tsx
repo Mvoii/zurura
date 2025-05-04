@@ -64,7 +64,7 @@ const RouteSearchForm: React.FC<RouteSearchFormProps> = ({
             </div>
           </div>
           <div className="flex justify-end">
-            <Button disabled={isLoading}>
+            <Button type='submit' disabled={isLoading}>
               {isLoading ? 'Searching...' : 'Search Routes'}
             </Button>
           </div>
