@@ -1,6 +1,41 @@
 import { apiClient } from './client';
 
-// Define interfaces for the data models
+// NEW: Define interfaces for the actual backend response structure
+// This matches the nested structure from GetRouteDetails
+export interface RouteDetailsResponse {
+  route: {
+    id: string;
+    route_name: string;
+    description: string;
+    origin: string;
+    destination: string;
+    created_at: string;
+    updated_at: string;
+  };
+  stops: BackendRouteStop[];
+}
+
+// NEW: Interface for stop objects in the backend response
+export interface BackendRouteStop {
+  id: string;
+  route_id: string;
+  bus_stop_id: string;
+  stop_order: number;
+  timetable: string[];
+  stop_details: {
+    id: string;
+    name: string;
+    latitude: number;
+    longitude: number;
+    landmark_description?: string;
+    created_at: string;
+    updated_at: string;
+  };
+  travel_time: number;
+  created_at: string;
+}
+
+// MODIFIED: For endpoints that return a flat route structure (like GET /routes list)
 export interface RouteBackendData {
   id?: string;
   route_name: string;
@@ -9,9 +44,11 @@ export interface RouteBackendData {
   destination?: string;
   created_at?: string;
   updated_at?: string;
+  base_fare?: number; // Some endpoints include this
   stops?: RouteStop[];
 }
 
+// Keep RouteFrontendData as is - it's the common structure used by components
 export interface RouteFrontendData {
   id?: string;
   route_name: string;
@@ -23,6 +60,7 @@ export interface RouteFrontendData {
   stops?: RouteStop[];
 }
 
+// Keep RouteStop as is
 export interface RouteStop {
   id: string; // stop_uuid
   name: string;
@@ -158,23 +196,42 @@ export const getRoutes = async (params: RouteSearchParams = {}): Promise<RouteFr
  */
 export const getRouteById = async (id: string): Promise<RouteFrontendData> => {
   try {
-    const response = await apiClient.get<RouteBackendData>(`/routes/${id}`);
+    // Updated to use RouteDetailsResponse for the nested structure
+    const response = await apiClient.get<RouteDetailsResponse>(`/routes/${id}`);
     
-    // if (!response.success || !response.data) {
-    //   throw new Error(response.message || 'Route not found');
-    // }
-
     console.log('Response:', response);
     if (!response) {
       throw new Error('Route not found');
     }
     
-    const mappedRoute = mapRouteForFrontend(response);
-    if (!mappedRoute) {
-      throw new Error('Failed to map route data');
-    }
-    console.log('Mapped route:', mappedRoute, response);
-    return response;
+    // Transform the nested backend structure to the flat frontend format
+    const mappedRoute: RouteFrontendData = {
+      id: response.route?.id,
+      route_name: response.route?.route_name || '',
+      description: response.route?.description || '',
+      origin: response.route?.origin,
+      destination: response.route?.destination,
+      created_at: response.route?.created_at,
+      updated_at: response.route?.updated_at,
+      // Map the nested stop structure to the flat RouteStop format
+      stops: Array.isArray(response.stops) 
+        ? response.stops.map(stop => ({
+            id: stop.id,
+            name: stop.stop_details.name,
+            latitude: stop.stop_details.latitude,
+            longitude: stop.stop_details.longitude,
+            stop_order: stop.stop_order,
+            timetable: stop.timetable,
+            travel_time: stop.travel_time,
+            landmark_description: stop.stop_details.landmark_description,
+            created_at: stop.created_at,
+            stop_id: stop.bus_stop_id,
+          }))
+        : [],
+    };
+    
+    console.log('Mapped route:', mappedRoute);
+    return mappedRoute; // Fixed: Return mappedRoute instead of response
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch route';
     console.error(`Failed to fetch route ${id}:`, errorMessage);
