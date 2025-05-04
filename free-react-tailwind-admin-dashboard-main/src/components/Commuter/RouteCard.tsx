@@ -14,7 +14,7 @@ const RouteCard: React.FC<RouteCardProps> = ({ route, className }) => {
   console.log('RouteCard received route:', route); 
   console.log(route)
   // Access data from the nested 'route' object
-  const routeDetails = route.route; 
+  const routeDetails = route; 
     console.log('Route details:', routeDetails);
     
   if (!routeDetails) {
