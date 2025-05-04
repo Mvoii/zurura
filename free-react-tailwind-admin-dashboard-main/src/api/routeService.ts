@@ -332,16 +332,16 @@ export const deleteRoute = async (id: string): Promise<void> => {
  */
 export const addRouteStop = async (routeId: string, stopData: RouteStop): Promise<RouteStop> => {
   try {
-    const response = await apiClient.post<ApiResponse<RouteStop>>(
-      `/op/routes/${routeId}/stops`, 
+    const response = await apiClient.post<RouteStop>(
+      `/op/${routeId}/stops`, 
       stopData as unknown as Record<string, unknown>
     );
-    
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to add stop to route');
+    console.log('Response:', response);
+    if (!response) {
+      throw new Error('Failed to add stop to route');
     }
     
-    return response.data;
+    return response
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to add stop to route';
     console.error(`Failed to add stop to route ${routeId}:`, errorMessage);
