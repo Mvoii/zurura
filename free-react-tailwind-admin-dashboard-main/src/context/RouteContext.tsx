@@ -5,7 +5,6 @@ import {
   createRoute, 
   updateRoute, 
   deleteRoute,
-  getRouteStops,
   addRouteStop,
   updateRouteStop,
   deleteRouteStop,
@@ -31,14 +30,12 @@ interface RouteContextType {
   isLoading: boolean;
   error: string | null;
   
-  // Updated signature to accept search parameters
   fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
   removeRoute: (id: string) => Promise<RouteResult>;
   
-  fetchRouteStops: (routeId: string) => Promise<RouteStop[]>;
   addRouteStop: (routeId: string, stopData: RouteStop) => Promise<RouteResult>;
   updateRouteStop: (routeId: string, stopId: string, stopData: RouteStop) => Promise<RouteResult>;
   removeRouteStop: (routeId: string, stopId: string) => Promise<RouteResult>;
@@ -74,7 +71,6 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     setError(null);
     
     try {
-      // Pass the search parameters to getRoutes
       const routes = await getRoutes(params);
       console.log('Fetched routes:', routes);
       setRoutes(routes);
@@ -97,11 +93,16 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     
     try {
       const route = await getRouteById(id);
-      // if (!route) {
-      //   throw new Error(`Route with ID ${id} not found`);
-      // }
       console.log('Fetched route:', route);
       setCurrentRoute(route);
+      
+      if (route?.stops && Array.isArray(route.stops)) {
+        setRouteStops(route.stops);
+        console.log('Updated routeStops from fetchRoute:', route.stops);
+      } else {
+        setRouteStops([]);
+      }
+      
       return route;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to fetch route ${id}`;
@@ -111,7 +112,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, []);
-// console.log('current Fetched route:', currentRoute);
+
   /**
    * Add a new route
    */
@@ -142,14 +143,16 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     try {
       const data = await updateRoute(id, routeData);
       
-      // Update in the routes list
       setRoutes(prevRoutes => 
         prevRoutes.map(route => route.id === id ? data : route)
       );
       
-      // Update currentRoute if it's the one we're editing
       if (currentRoute?.id === id) {
         setCurrentRoute(data);
+        
+        if (data.stops) {
+          setRouteStops(data.stops);
+        }
       }
       
       return { success: true, data };
@@ -172,12 +175,11 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     try {
       await deleteRoute(id);
       
-      // Remove from routes list
       setRoutes(prevRoutes => prevRoutes.filter(route => route.id !== id));
       
-      // Clear currentRoute if it's the one we're deleting
       if (currentRoute?.id === id) {
         setCurrentRoute(null);
+        setRouteStops([]);
       }
       
       return { success: true };
@@ -191,26 +193,6 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
   }, [currentRoute]);
 
   /**
-   * Fetch stops for a route
-   */
-  const fetchRouteStops = useCallback(async (routeId: string): Promise<RouteStop[]> => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const stops = await getRouteStops(routeId);
-      setRouteStops(stops);
-      return stops;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : `Failed to fetch stops for route ${routeId}`;
-      setError(errorMessage);
-      return [];
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  /**
    * Add a stop to a route
    */
   const addStop = useCallback(async (routeId: string, stopData: RouteStop): Promise<RouteResult> => {
@@ -220,6 +202,14 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     try {
       const data = await addRouteStop(routeId, stopData);
       setRouteStops(prevStops => [...prevStops, data]);
+      
+      if (currentRoute?.id === routeId) {
+        setCurrentRoute(prev => prev ? {
+          ...prev,
+          stops: [...(prev.stops || []), data]
+        } : null);
+      }
+      
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to add stop to route ${routeId}`;
@@ -228,7 +218,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentRoute]);
 
   /**
    * Update a route stop
@@ -242,6 +232,14 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       setRouteStops(prevStops => 
         prevStops.map(stop => stop.id === stopId ? data : stop)
       );
+      
+      if (currentRoute?.id === routeId && currentRoute.stops) {
+        setCurrentRoute(prev => prev ? {
+          ...prev,
+          stops: prev.stops?.map(stop => stop.id === stopId ? data : stop)
+        } : null);
+      }
+      
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to update stop ${stopId}`;
@@ -250,7 +248,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentRoute]);
 
   /**
    * Delete a route stop
@@ -264,6 +262,14 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       setRouteStops(prevStops => 
         prevStops.filter(stop => stop.id !== stopId)
       );
+      
+      if (currentRoute?.id === routeId && currentRoute.stops) {
+        setCurrentRoute(prev => prev ? {
+          ...prev,
+          stops: prev.stops?.filter(stop => stop.id !== stopId)
+        } : null);
+      }
+      
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to remove stop ${stopId}`;
@@ -272,7 +278,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentRoute]);
 
   /**
    * Reorder stops on a route
@@ -283,9 +289,17 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     
     try {
       await reorderRouteStops(routeId, stopsOrder);
-      // After reordering, fetch the updated stops to reflect the new order
-      const stops = await getRouteStops(routeId);
-      setRouteStops(stops);
+      
+      const updatedRoute = await getRouteById(routeId);
+      
+      if (updatedRoute?.stops) {
+        setRouteStops(updatedRoute.stops);
+        
+        if (currentRoute?.id === routeId) {
+          setCurrentRoute(updatedRoute);
+        }
+      }
+      
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to reorder stops for route ${routeId}`;
@@ -294,13 +308,14 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentRoute]);
 
   /**
    * Clear the currently selected route
    */
   const clearCurrentRoute = useCallback((): void => {
     setCurrentRoute(null);
+    setRouteStops([]);
   }, []);
 
   /**
@@ -310,7 +325,6 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     setError(null);
   }, []);
 
-  // The value to be provided to consumers
   const contextValue: RouteContextType = {
     routes,
     currentRoute,
@@ -322,7 +336,6 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     addRoute,
     editRoute,
     removeRoute,
-    fetchRouteStops,
     addRouteStop: addStop,
     updateRouteStop: updateStop,
     removeRouteStop: removeStop,
