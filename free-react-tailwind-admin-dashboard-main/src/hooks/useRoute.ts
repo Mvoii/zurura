@@ -30,7 +30,6 @@ export interface UseRouteReturn {
   removeRoute: (id: string) => Promise<RouteResult>;
   
   // Route stops operations
-  fetchRouteStops: (routeId: string) => Promise<RouteStop[]>;
   addRouteStop: (routeId: string, stopData: RouteStop) => Promise<RouteResult>;
   updateRouteStop: (routeId: string, stopId: string, stopData: RouteStop) => Promise<RouteResult>;
   removeRouteStop: (routeId: string, stopId: string) => Promise<RouteResult>;
@@ -40,6 +39,7 @@ export interface UseRouteReturn {
   clearCurrentRoute: () => void;
   clearError: () => void;
 }
+
 /**
  * Custom hook to access route functionality throughout the app
  * @returns Route state and methods
