@@ -27,6 +27,8 @@ import { BusProvider } from './context/BusContext';
 import BusList from "./components/operator/BusList";
 import FindRoutesPage from "./pages/Commuter/FindRoutesPage";
 import RouteDetailsPage from "./pages/Commuter/RouteDetailsPage";
+// Add import for ManageRouteStopsPage
+import ManageRouteStopsPage from "./pages/Operator/ManageRouteStopsPage";
 
 // Layout component for public routes needing RouteProvider
 const PublicRouteLayout = () => (
@@ -95,7 +97,8 @@ export default function App() {
                 <Route path="/operator/dashboard" element={<div>Operator Dashboard</div>} />
                 <Route path="/operator/routes" element={<RouteList showOperatorControls={true} />} />
                 <Route path="/operator/routes/new" element={<div>Route Form - Consider removing if handled by modal</div>} />
-                <Route path="/operator/routes/:routeId/stops" element={<div>Route Stops</div>} />
+                {/* Updated route below to use ManageRouteStopsPage component */}
+                <Route path="/operator/routes/:routeId/stops" element={<ManageRouteStopsPage />} />
                 <Route path="/operator/buses" element={<BusList />} />
                 <Route path="/operator/buses/:id/edit" element={<div>Bus Form</div>} />
                 <Route path="/operator/buses/:busId/assignments" element={<div>Bus Assignments List</div>} />
