@@ -9,9 +9,9 @@ import (
 	"github.com/Mvoii/zurura/internal/db"
 	"github.com/Mvoii/zurura/internal/handlers"
 	"github.com/Mvoii/zurura/internal/middleware"
-	"github.com/Mvoii/zurura/internal/services/tracking"
-	"github.com/Mvoii/zurura/internal/services/payments"
 	"github.com/Mvoii/zurura/internal/services/booking"
+	"github.com/Mvoii/zurura/internal/services/payments"
+	"github.com/Mvoii/zurura/internal/services/tracking"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -50,10 +50,10 @@ func main() {
 
 	// Initialize payment service
 	paymentService := payments.NewMockPaymentService()
-	
+
 	// Initialize booking service with payment service
 	bookingService := booking.NewBookingService(db, paymentService)
-	
+
 	// Initialize handlers
 	bookingHandler := handlers.NewBookingHandler(db, bookingService)
 	authHandler := handlers.NewAuthHandler(db)
@@ -116,8 +116,8 @@ func main() {
 			protected.PUT("/op/buses/:id", operatorHandler.UpdateBus)
 			protected.GET("/op/buses", operatorHandler.ListBuses)
 
-			protected.POST("op/routes", routeHandler.CreateRoute)
-			protected.POST("op/:route_id/stops", routeHandler.AddStopToRoute)
+			protected.POST("/op/routes", routeHandler.CreateRoute)
+			protected.POST("/op/:route_id/stops", routeHandler.AddStopToRoute)
 
 			protected.POST("/op/schedules", scheduleHandler.CreateSchedule)
 			protected.POST("/op/buses/:bus_id/assign", operatorHandler.AssignBusToRoute)
