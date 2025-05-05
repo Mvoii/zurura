@@ -58,15 +58,22 @@ const mapBusForFrontend = (busData: BusBackendData): BusFrontendData => {
  */
 export const getBuses = async (): Promise<BusFrontendData[]> => {
   try {
-    const response = await apiClient.get<ApiResponse<BusBackendData[]>>('/op/buses');
+    const response = await apiClient.get<BusBackendData[]>('/op/buses');
+
+    console.log('Response:', response);
     
     // Handle case where there's no data or the API returns an error
-    if (!response.success || !Array.isArray(response.data)) {
-      console.error('Failed to fetch buses:', response.message || 'Unknown error');
+    // if (!response.success || !Array.isArray(response.data)) {
+    //   console.error('Failed to fetch buses:', response.message || 'Unknown error');
+    //   return []; // Return empty array instead of throwing
+    // }
+    
+    if (!Array.isArray(response)) {
+      console.error('Failed to fetch buses:', 'Response is not an array');
       return []; // Return empty array instead of throwing
     }
-    
-    return response.data.map(mapBusForFrontend);
+
+    return response.map(mapBusForFrontend);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch buses';
     console.error('Failed to fetch buses:', errorMessage);
@@ -79,13 +86,13 @@ export const getBuses = async (): Promise<BusFrontendData[]> => {
  */
 export const getBusById = async (id: string): Promise<BusFrontendData | null> => {
   try {
-    const response = await apiClient.get<ApiResponse<BusBackendData>>(`/op/buses/${id}`);
+    const response = await apiClient.get<BusBackendData>(`/op/buses/${id}`);
     
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Bus not found');
+    if (!response) {
+      throw new Error('Bus not found');
     }
     
-    return mapBusForFrontend(response.data);
+    return mapBusForFrontend(response);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to fetch bus';
     console.error(`Failed to fetch bus ${id}:`, errorMessage);
@@ -99,16 +106,20 @@ export const getBusById = async (id: string): Promise<BusFrontendData | null> =>
 export const createBus = async (busData: BusFrontendData): Promise<BusFrontendData> => {
   try {
     const backendData = mapBusForBackend(busData);
-    const response = await apiClient.post<ApiResponse<BusBackendData>>(
+    const response = await apiClient.post<BusBackendData>(
       '/op/buses',
       backendData
     );
     
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to create bus');
+    // if (!response.success || !response.data) {
+    //   throw new Error(response.message || 'Failed to create bus');
+    // }
+    console.log('response:', response);
+    if (!response) {
+      throw new Error('Failed to create bus');
     }
-    
-    return mapBusForFrontend(response.data);
+
+    return mapBusForFrontend(response);
   } catch (error) {
     // Check for specific error types the backend might return
     if (error instanceof Error && error.message.includes('reg plate already exists')) {
@@ -132,16 +143,16 @@ export const updateBus = async (id: string, busData: Partial<BusFrontendData>): 
       bus_photo_url: busData.busPhotoUrl
     };
     
-    const response = await apiClient.put<ApiResponse<BusBackendData>>(
+    const response = await apiClient.put<BusBackendData>(
       `/op/buses/${id}`,
       updateData as Record<string, unknown>
     );
     
-    if (!response.success || !response.data) {
-      throw new Error(response.message || 'Failed to update bus');
-    }
+    // if (!response) {
+    //   throw new Error(response.message || 'Failed to update bus');
+    // }
     
-    return mapBusForFrontend(response.data);
+    return mapBusForFrontend(response);
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to update bus';
     console.error(`Failed to update bus ${id}:`, errorMessage);
