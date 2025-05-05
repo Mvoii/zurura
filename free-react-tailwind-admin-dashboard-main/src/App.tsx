@@ -27,24 +27,7 @@ import { BusProvider } from './context/BusContext';
 import BusList from "./components/operator/BusList";
 import FindRoutesPage from "./pages/Commuter/FindRoutesPage";
 import RouteDetailsPage from "./pages/Commuter/RouteDetailsPage";
-// Add import for ManageRouteStopsPage
 import ManageRouteStopsPage from "./pages/Operator/ManageRouteStopsPage";
-
-// Layout component for public routes needing RouteProvider
-const PublicRouteLayout = () => (
-  <RouteProvider>
-    <Outlet />
-  </RouteProvider>
-);
-
-// Layout component for public routes needing both Route & Bus providers
-const PublicTrackingLayout = () => (
-  <RouteProvider>
-    <BusProvider>
-      <Outlet />
-    </BusProvider>
-  </RouteProvider>
-);
 
 export default function App() {
   console.log('App loaded - Auth state:', {
@@ -59,45 +42,41 @@ export default function App() {
         <AuthProvider>
           <ScrollToTop />
           <Routes>
-            {/* Group 1: Pure public routes (no providers needed) */}
+            {/* Auth routes - NO AppLayout */}
             <Route path="/auth/signin" element={<SignIn />} />
             <Route path="/auth/signup" element={<SignUp />} />
-            <Route path="/" element={<Home />} />
 
-            {/* Group 2: Public routes needing RouteProvider */}
-            <Route element={<PublicRouteLayout />}>
+            {/* All other routes USE AppLayout */}
+            <Route
+              element={
+                <RouteProvider>
+                  <BusProvider>
+                    <AppLayout />
+                  </BusProvider>
+                </RouteProvider>
+              }
+            >
+              {/* === Public Routes === */}
+              <Route path="/" element={<Home />} />
               <Route path="/routes" element={<FindRoutesPage />} />
               <Route path="/routes/:routeId" element={<RouteDetailsPage />} />
               <Route path="/schedules" element={<div>Schedules List</div>} />
-            </Route>
-
-            {/* Group 3: Public routes needing BusProvider + RouteProvider */}
-            <Route element={<PublicTrackingLayout />}>
               <Route path="/tracking/:busId" element={<div>Bus Tracking Page</div>} />
               <Route path="/tracking/nearby" element={<div>Nearby Buses Page</div>} />
-            </Route>
 
-            {/* Group 4: Authenticated routes within AppLayout */}
-            <Route element={
-              <RouteProvider>
-                <BusProvider>
-                  <AppLayout />
-                </BusProvider>
-              </RouteProvider>
-            }>
-              {/* Commuter-specific routes */}
+              {/* === Authenticated Routes === */}
+              {/* Commuter */}
               <Route element={<ProtectedRoute requiredRole="commuter" />}>
                 <Route path="/dashboard" element={<div>Commuter Dashboard</div>} />
                 <Route path="/bookings" element={<div>My Bookings</div>} />
                 <Route path="/history" element={<div>Trip History</div>} />
               </Route>
 
-              {/* Operator-specific routes */}
+              {/* Operator */}
               <Route element={<ProtectedRoute requiredRole="operator" />}>
                 <Route path="/operator/dashboard" element={<div>Operator Dashboard</div>} />
                 <Route path="/operator/routes" element={<RouteList showOperatorControls={true} />} />
-                <Route path="/operator/routes/new" element={<div>Route Form - Consider removing if handled by modal</div>} />
-                {/* Updated route below to use ManageRouteStopsPage component */}
+                <Route path="/operator/routes/new" element={<div>Route Form</div>} />
                 <Route path="/operator/routes/:routeId/stops" element={<ManageRouteStopsPage />} />
                 <Route path="/operator/buses" element={<BusList />} />
                 <Route path="/operator/buses/:id/edit" element={<div>Bus Form</div>} />
@@ -109,22 +88,28 @@ export default function App() {
                 <Route path="/operator/schedules/new" element={<div>Schedule Form</div>} />
               </Route>
 
-              {/* Driver-specific routes */}
+              {/* Driver */}
               <Route element={<ProtectedRoute requiredRole="driver" />}>
                 <Route path="/driver/dashboard" element={<div>Driver Dashboard</div>} />
                 <Route path="/driver/tracking" element={<div>Location Update Form</div>} />
               </Route>
 
-              {/* Other general authenticated routes */}
-              <Route path="/profile" element={<UserProfiles />} />
-              <Route path="/calendar" element={<Calendar />} />
-              <Route path="/blank" element={<Blank />} />
-              <Route path="/form-elements" element={<FormElements />} />
-              <Route path="/basic-tables" element={<BasicTables />} />
-            </Route>
+              {/* General Authenticated (requires login, any role) */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/profile" element={<UserProfiles />} />
+                <Route path="/calendar" element={<Calendar />} />
+              </Route>
 
-            {/* Fallback Route */}
-            <Route path="*" element={<NotFound />} />
+              {/* Legacy/Demo Routes (assuming they need login) */}
+              <Route element={<ProtectedRoute />}>
+                <Route path="/blank" element={<Blank />} />
+                <Route path="/form-elements" element={<FormElements />} />
+                <Route path="/basic-tables" element={<BasicTables />} />
+              </Route>
+
+              {/* Fallback Route INSIDE layout */}
+              <Route path="*" element={<NotFound />} />
+            </Route>
           </Routes>
         </AuthProvider>
       </Router>
