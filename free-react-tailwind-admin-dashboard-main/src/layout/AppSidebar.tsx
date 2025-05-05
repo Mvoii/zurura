@@ -1,23 +1,35 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import useAuth from "../hooks/useAuth";
+// import SidebarWidget from "./SidebarWidget";
+import { GridIcon } from "../icons";
 
-// Import only existing icons from your project
+// Import Lucide React icons
 import {
-  BoxCubeIcon,
-  CalenderIcon,
-  ChevronDownIcon,
-  GridIcon,
-  HorizontaLDots,
-  ListIcon,
-  PageIcon,
-  PieChartIcon,
-  PlugInIcon,
-  TableIcon,
-  UserCircleIcon,
-} from "../icons";
+  User,
+  Calendar,
+  MapPin,
+  Home,
+  Search,
+  Clock,
+  History,
+  Bus,
+  Route,
+  // ListChecks,
+  ChevronDown,
+  MoreHorizontal,
+  // PieChart,
+  Users,
+  Settings,
+  // LogIn,
+  // UserPlus,
+  Ticket,
+  Navigation,
+  Map,
+  AlertCircle
+} from "lucide-react";
+
 import { useSidebar } from "../context/SidebarContext";
-import SidebarWidget from "./SidebarWidget";
 
 type NavItem = {
   name: string;
@@ -29,38 +41,43 @@ type NavItem = {
 // Define common navigation items accessible by all authenticated users
 const commonNavItems: NavItem[] = [
   {
-    icon: <UserCircleIcon />,
+    icon: <User size={20} />,
     name: "Profile",
     path: "/profile",
   },
   {
-    icon: <CalenderIcon />,
-    name: "Calendar",
-    path: "/calendar",
+    icon: <Settings size={20} />,
+    name: "Settings",
+    path: "/settings",
   },
 ];
 
 // Define Commuter-specific navigation items
 const commuterNavItems: NavItem[] = [
   {
-    icon: <GridIcon />,
+    icon: <Home size={20} />,
     name: "Dashboard",
     path: "/dashboard",
   },
   {
-    icon: <PageIcon />,
+    icon: <Search size={20} />,
     name: "Find Routes",
     path: "/routes",
   },
   {
-    icon: <TableIcon />,
+    icon: <Ticket size={20} />,
     name: "My Bookings",
     path: "/bookings",
   },
   {
-    icon: <PlugInIcon />,
+    icon: <History size={20} />,
     name: "Trip History",
     path: "/history",
+  },
+  {
+    icon: <Navigation size={20} />,
+    name: "Live Tracking",
+    path: "/tracking/nearby",
   },
 ];
 
@@ -72,17 +89,17 @@ const operatorNavItems: NavItem[] = [
     path: "/operator/dashboard",
   },
   {
-    icon: <ListIcon />,
+    icon: <Route size={20} />,
     name: "Routes",
     path: "/operator/routes",
   },
   {
-    icon: <BoxCubeIcon />,
+    icon: <Bus size={20} />,
     name: "Buses",
     path: "/operator/buses",
   },
   {
-    icon: <CalenderIcon />,
+    icon: <Calendar size={20} />,
     name: "Schedule",
     subItems: [
       { name: "View Schedules", path: "/operator/schedules", pro: false },
@@ -90,9 +107,14 @@ const operatorNavItems: NavItem[] = [
     ],
   },
   {
-    icon: <PieChartIcon />,
+    icon: <Users size={20} />,
     name: "Drivers",
     path: "/operator/drivers",
+  },
+  {
+    icon: <MapPin size={20} />,
+    name: "Stops",
+    path: "/operator/stops",
   },
 ];
 
@@ -104,26 +126,31 @@ const driverNavItems: NavItem[] = [
     path: "/driver/dashboard",
   },
   {
-    icon: <PageIcon />,
+    icon: <Map size={20} />,
     name: "Live Tracking",
     path: "/driver/tracking",
   },
   {
-    icon: <CalenderIcon />,
+    icon: <Clock size={20} />,
     name: "My Schedule",
     path: "/driver/schedule",
+  },
+  {
+    icon: <AlertCircle size={20} />,
+    name: "Incident Reports",
+    path: "/driver/incidents",
   },
 ];
 
 // Define unauthenticated user menu items
 const unauthenticatedItems: NavItem[] = [
   {
-    icon: <PageIcon />,
+    icon: <Search size={20} />,
     name: "Find Routes",
     path: "/routes",
   },
   {
-    icon: <PlugInIcon />,
+    icon: <User size={20} />,
     name: "Authentication",
     subItems: [
       { name: "Sign In", path: "/auth/signin", pro: false },
@@ -304,7 +331,7 @@ const AppSidebar: React.FC = () => {
           {isExpanded || isHovered || isMobileOpen ? (
             sectionTitle
           ) : (
-            <HorizontaLDots className="size-6" />
+            <MoreHorizontal className="size-6" />
           )}
         </h2>
         <ul className="flex flex-col gap-4">
@@ -336,7 +363,7 @@ const AppSidebar: React.FC = () => {
                     <span className="menu-item-text">{nav.name}</span>
                   )}
                   {(isExpanded || isHovered || isMobileOpen) && (
-                    <ChevronDownIcon
+                    <ChevronDown
                       className={`ml-auto w-5 h-5 transition-transform duration-200 ${
                         openSubmenu?.type === menuType &&
                         openSubmenu?.index === index
