@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import useRoute from '../../hooks/useRoute';
 import RouteCard from '../../components/Commuter/RouteCard';
@@ -8,11 +8,13 @@ import ComponentCard from '../../components/common/ComponentCard';
 import { ArrowLeft, Clock } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../../components/ui/table";
+import { RouteFrontendData } from '../../api/routeService';
 
 const RouteDetailsPage: React.FC = () => {
   const { routeId } = useParams<{ routeId: string }>();
-  console.log('Route ID from URL:', routeId);
   const navigate = useNavigate();
+  const [localRoute, setLocalRoute] = useState<RouteFrontendData | null>(null);
+
   const { 
     currentRoute,
     isLoading, 
@@ -20,29 +22,47 @@ const RouteDetailsPage: React.FC = () => {
     fetchRoute
   } = useRoute();
 
-  console.log('Fetched route:', currentRoute);
-  
+  const routeData = currentRoute || localRoute;
+
   useEffect(() => {
-    // Fetch route details 
+    let isMounted = true;
+
     if (routeId) {
-      try {
-        fetchRoute(routeId)
-          .then(() => {
-              console.log('Route details fetched successfully');
-          });
-      } catch (err) {
-        console.error('Error fetching route details:', err);
-      }
+      console.log(`[RouteDetailsPage] Fetching route with ID: ${routeId}`);
+
+      fetchRoute(routeId)
+        .then(routeData => {
+          if (isMounted && routeData) {
+            console.log('[RouteDetailsPage] Route fetched successfully:', routeData.route_name);
+            setLocalRoute(routeData);
+          }
+        })
+        .catch(err => {
+          if (isMounted) {
+            console.error('[RouteDetailsPage] Error fetching route:', err);
+          }
+        });
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [routeId, fetchRoute]);
 
-  // Navigate back to search
+  useEffect(() => {
+    console.log('[RouteDetailsPage] Route data updated:', {
+      contextRoute: currentRoute?.route_name,
+      localRoute: localRoute?.route_name,
+      isLoading,
+      hasError: !!error
+    });
+  }, [currentRoute, localRoute, isLoading, error]);
+
   const handleGoBack = () => {
     navigate('/routes');
   };
 
-  if (isLoading && !currentRoute) {
-    // Show loading indicator only if data isn't already loaded
+  if (isLoading && !routeData) {
     return (
       <div className="flex justify-center items-center p-10">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -52,7 +72,6 @@ const RouteDetailsPage: React.FC = () => {
   }
 
   if (error) {
-    // Show error message
     return (
       <div className="container mx-auto px-4 py-6">
         <Button
@@ -68,9 +87,7 @@ const RouteDetailsPage: React.FC = () => {
     );
   }
 
-  // Explicitly check if currentRoute is available AFTER loading and error checks
-  if (!currentRoute) {
-    // Handle case where loading finished, no error, but no route data (e.g., 404 handled gracefully)
+  if (!routeData) {
     return (
       <div className="container mx-auto px-4 py-6">
         <Button
@@ -84,13 +101,12 @@ const RouteDetailsPage: React.FC = () => {
         <Alert 
           variant="info" 
           title="Not Found" 
-          message="The requested route could not be found." 
+          message={`The requested route (ID: ${routeId}) could not be found.`} 
         />
       </div>
     );
   }
 
-  // If we reach here, isLoading is false, error is null, and currentRoute is valid
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
@@ -105,10 +121,8 @@ const RouteDetailsPage: React.FC = () => {
         <h1 className="text-2xl font-bold mb-6">Route Details</h1>
       </div>
       
-      {/* Render RouteCard only with valid data */}
-      <RouteCard route={currentRoute} className="mb-6" />
+      <RouteCard route={routeData} className="mb-6" />
       
-      {/* Stops Section - always displayed when available */}
       <ComponentCard title="Route Stops" className="mb-6">
         {isLoading && (
           <div className="flex justify-center items-center p-4">
@@ -117,13 +131,13 @@ const RouteDetailsPage: React.FC = () => {
           </div>
         )}
         
-        {!isLoading && (!currentRoute.stops || currentRoute.stops.length === 0) && (
+        {!isLoading && (!routeData.stops || routeData.stops.length === 0) && (
           <p className="text-center text-gray-500 py-4">
             No stops available for this route.
           </p>
         )}
         
-        {!isLoading && currentRoute.stops && currentRoute.stops.length > 0 && (
+        {!isLoading && routeData.stops && routeData.stops.length > 0 && (
           <div className="overflow-x-auto">
             <Table className="w-full">
               <TableHeader>
@@ -139,8 +153,8 @@ const RouteDetailsPage: React.FC = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {currentRoute.stops.map((stop) => (
-                  <TableRow key={stop.id || stop.stop_id}>
+                {routeData.stops.map((stop) => (
+                  <TableRow key={stop.id || stop.stop_id || `stop-${stop.stop_order}`}>
                     <TableCell className="font-medium">
                       {stop.name || 'Unnamed Stop'}
                     </TableCell>
