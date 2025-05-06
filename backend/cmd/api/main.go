@@ -3,6 +3,7 @@ package main
 
 import (
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,8 +15,17 @@ import (
 	"github.com/Mvoii/zurura/internal/services/tracking"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true // Allow all origins, change for prod
+	},
+}
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -67,6 +77,7 @@ func main() {
 	// bookingHandler :=
 	// paymentHander :=
 	operatorHandler := handlers.NewOperatorHandler(db)
+	notficationHandler := handlers.NewNotificationHandler(db)
 
 	/// [MOCK]
 	/// Initialize with mock payment service
@@ -98,6 +109,7 @@ func main() {
 
 		// protected routes
 		protected := api.Group("/")
+		//protected.GET("/notifications/ws", notificationHandler.HandleWebSocket)
 		protected.Use(middleware.AuthRequired(db))
 		{
 			protected.POST("/auth/logout", authHandler.Logout)
@@ -110,6 +122,11 @@ func main() {
 			protected.POST("/bookings", bookingHandler.CreateBooking)
 			protected.POST("/bookings/:id/cancel", bookingHandler.CancelBooking)
 			protected.GET("/me/bookings", bookingHandler.GetUserBookings)
+
+			// notifs
+			protected.GET("/me/notifications", notficationHandler.GetNotifications)
+			protected.GET("/me/notifications/:notification_id/read", notficationHandler.GetNotificationDetails)
+			protected.POST("/me/notifications/:notification_id/read", notficationHandler.MarkAsRead)
 		}
 
 		protected.Use(middleware.OperatorAuthRequired(db), middleware.RoleRequired("operator"))
