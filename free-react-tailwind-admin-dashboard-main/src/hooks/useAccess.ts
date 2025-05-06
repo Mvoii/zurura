@@ -9,7 +9,7 @@ import {
 /**
  * Permission types for different resource operations
  */
-export type ResourceType = 'route' | 'booking' | 'vehicle' | 'stop';
+export type ResourceType = 'route' | 'booking' | 'vehicle' | 'stop' | 'assignment';
 export type OperationType = 'view' | 'create' | 'update' | 'delete';
 
 /**
@@ -31,25 +31,29 @@ export const useAccess = () => {
         route: ['view', 'create', 'update', 'delete'],
         booking: ['view'],
         vehicle: ['view', 'create', 'update', 'delete'],
-        stop: ['view', 'create', 'update', 'delete']
+        stop: ['view', 'create', 'update', 'delete'],
+        assignment: ['view', 'create', 'update', 'delete'] // Added assignment permissions
       },
       driver: {
         route: ['view'],
         booking: ['view', 'update'],
         vehicle: ['view'],
-        stop: ['view']
+        stop: ['view'],
+        assignment: ['view'] // Added assignment permissions
       },
       commuter: {
         route: ['view'],
         booking: ['view', 'create'],
         vehicle: ['view'],
-        stop: ['view']
+        stop: ['view'],
+        assignment: ['view'] // Added assignment permissions
       },
       admin: {
         route: ['view', 'create', 'update', 'delete'],
         booking: ['view', 'create', 'update', 'delete'],
         vehicle: ['view', 'create', 'update', 'delete'],
-        stop: ['view', 'create', 'update', 'delete']
+        stop: ['view', 'create', 'update', 'delete'],
+        assignment: ['view', 'create', 'update', 'delete'] // Added assignment permissions
       }
     };
 
