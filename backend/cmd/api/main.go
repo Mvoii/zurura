@@ -11,6 +11,7 @@ import (
 	"github.com/Mvoii/zurura/internal/handlers"
 	"github.com/Mvoii/zurura/internal/middleware"
 	"github.com/Mvoii/zurura/internal/services/booking"
+	services "github.com/Mvoii/zurura/internal/services/notifications"
 	"github.com/Mvoii/zurura/internal/services/payments"
 	"github.com/Mvoii/zurura/internal/services/tracking"
 
@@ -19,7 +20,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-var upgrader = websocket.Upgrader{
+var Upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
@@ -56,6 +57,9 @@ func main() {
 		log.Printf("[LOG] cleared expired tokens")
 	}()
 
+	// start broadcasting
+	
+
 	r := gin.Default()
 
 	// Initialize payment service
@@ -77,7 +81,11 @@ func main() {
 	// bookingHandler :=
 	// paymentHander :=
 	operatorHandler := handlers.NewOperatorHandler(db)
-	notficationHandler := handlers.NewNotificationHandler(db)
+	notificationHandler := handlers.NewNotificationHandler(db)
+	notificationService := services.NewNotificationService(db, notificationHandler)
+
+	/// go routine to start broadcasting for websockets
+	go notificationHandler.StartBroadcasting()
 
 	/// [MOCK]
 	/// Initialize with mock payment service
@@ -124,9 +132,9 @@ func main() {
 			protected.GET("/me/bookings", bookingHandler.GetUserBookings)
 
 			// notifs
-			protected.GET("/me/notifications", notficationHandler.GetNotifications)
-			protected.GET("/me/notifications/:notification_id/read", notficationHandler.GetNotificationDetails)
-			protected.POST("/me/notifications/:notification_id/read", notficationHandler.MarkAsRead)
+			protected.GET("/me/notifications", notificationHandler.GetNotifications)
+			protected.GET("/me/notifications/:notification_id/read", notificationHandler.GetNotificationDetails)
+			protected.POST("/me/notifications/:notification_id/read", notificationHandler.MarkAsRead)
 		}
 
 		protected.Use(middleware.OperatorAuthRequired(db), middleware.RoleRequired("operator"))
