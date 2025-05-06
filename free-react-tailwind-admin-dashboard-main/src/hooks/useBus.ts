@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import BusContext from '../context/BusContext';
-import type { BusFrontendData } from '../api/busService';
+import type { BusFrontendData, BusAssignmentFrontendData } from '../api/busService';
 
 /**
  * Interface for the result of bus operations
@@ -8,6 +8,15 @@ import type { BusFrontendData } from '../api/busService';
 export interface BusResult {
   success: boolean;
   data?: BusFrontendData | BusFrontendData[] | string;
+  error?: string;
+}
+
+/**
+ * Interface for the result of assignment operations
+ */
+export interface AssignmentResult {
+  success: boolean;
+  data?: BusAssignmentFrontendData;
   error?: string;
 }
 
@@ -27,6 +36,13 @@ export interface UseBusReturn {
   addBus: (busData: BusFrontendData) => Promise<BusResult>;
   editBus: (id: string, busData: Partial<BusFrontendData>) => Promise<BusResult>;
   removeBus: (id: string) => Promise<BusResult>;
+  
+  // Bus assignment operations
+  assignBusToRoute: (assignmentData: BusAssignmentFrontendData) => Promise<AssignmentResult>;
+  fetchBusAssignments: (busId: string) => Promise<BusAssignmentFrontendData[]>;
+  updateBusAssignment: (assignmentId: string, assignmentData: Partial<BusAssignmentFrontendData>) => Promise<AssignmentResult>;
+  deleteBusAssignment: (assignmentId: string) => Promise<BusResult>;
+  
   clearError: () => void;
 }
 

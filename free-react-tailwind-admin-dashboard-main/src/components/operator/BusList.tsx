@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import useBus from "../../hooks/useBus";
 import useAccess from "../../hooks/useAccess"; 
 import { Table, TableBody, TableCell, TableHeader, TableRow } from "../ui/table";
 import Button from "../ui/button/Button";
 import ComponentCard from "../common/ComponentCard";
-import { Edit2, Trash2, Plus, Search, CalendarRange } from "lucide-react";
+import { Edit2, Trash2, Plus, Search, CalendarRange, Calendar } from "lucide-react";
 import type { BusFrontendData } from "../../api/busService";
 import BusForm from "./BusForm"; // Add this import
 
@@ -235,7 +235,7 @@ const BusList = () => {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {/* View Assignments button */}
-                          <Button 
+                          {/* <Button 
                             variant="outline"
                             size="sm"
                             onClick={() => navigate(`/operator/buses/${bus.id}/assignments`)}
@@ -243,7 +243,7 @@ const BusList = () => {
                             title="View Assignments"
                           >
                             <CalendarRange size={16} />
-                          </Button>
+                          </Button> */}
                           
                           {/* Edit button */}
                           {can('update', 'vehicle') && (
@@ -256,6 +256,20 @@ const BusList = () => {
                             >
                               <Edit2 size={16} />
                             </Button>
+                          )}
+                          
+                          {/* Add Assignments Link */}
+                          {can('view', 'vehicle') && (
+                            <Link to={`/operator/buses/${bus.id}/assignments`}>
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                className="p-2"
+                                title="Manage Assignments"
+                              >
+                                <Calendar size={16} />
+                              </Button>
+                            </Link>
                           )}
                           
                           {/* Delete button */}

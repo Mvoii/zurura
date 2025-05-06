@@ -5,13 +5,25 @@ import {
   createBus,
   updateBus,
   deleteBus,
-  BusFrontendData
+  assignBusToRoute as apiAssignBusToRoute,
+  getBusAssignments as apiGetBusAssignments,
+  updateBusAssignment as apiUpdateBusAssignment,
+  deleteBusAssignment as apiDeleteBusAssignment,
+  BusFrontendData,
+  BusAssignmentFrontendData
 } from '../api/busService';
 
 // Operation result type
 interface BusResult {
   success: boolean;
   data?: BusFrontendData | BusFrontendData[] | string;
+  error?: string;
+}
+
+// Assignment result type
+interface AssignmentResult {
+  success: boolean;
+  data?: BusAssignmentFrontendData;
   error?: string;
 }
 
@@ -28,6 +40,13 @@ interface BusContextType {
   addBus: (busData: BusFrontendData) => Promise<BusResult>;
   editBus: (id: string, busData: Partial<BusFrontendData>) => Promise<BusResult>;
   removeBus: (id: string) => Promise<BusResult>;
+  
+  // Bus assignment operations
+  assignBusToRoute: (assignmentData: BusAssignmentFrontendData) => Promise<AssignmentResult>;
+  fetchBusAssignments: (busId: string) => Promise<BusAssignmentFrontendData[]>;
+  updateBusAssignment: (assignmentId: string, assignmentData: Partial<BusAssignmentFrontendData>) => Promise<AssignmentResult>;
+  deleteBusAssignment: (assignmentId: string) => Promise<BusResult>;
+  
   clearError: () => void;
 }
 
@@ -77,6 +96,7 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
     try {
       const data = await getBuses();
       setBuses(data);
+      setError(null);
       return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch buses';
@@ -97,6 +117,7 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
     try {
       const data = await getBusById(id);
       setCurrentBus(data);
+      setError(null);
       return data;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to fetch bus ${id}`;
@@ -117,6 +138,7 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
     try {
       const data = await createBus(busData);
       setBuses(prevBuses => [...prevBuses, data]);
+      setError(null);
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add bus';
@@ -146,6 +168,7 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
         setCurrentBus(data);
       }
       
+      setError(null);
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to update bus ${id}`;
@@ -173,6 +196,7 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
         setCurrentBus(null);
       }
       
+      setError(null);
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to delete bus ${id}`;
@@ -182,6 +206,107 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
       setIsLoading(false);
     }
   }, [currentBus]);
+
+  /**
+   * Assign a bus to a route for a specific time period
+   */
+  const assignBusToRoute = useCallback(async (assignmentData: BusAssignmentFrontendData): Promise<AssignmentResult> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const data = await apiAssignBusToRoute(assignmentData);
+      console.log('Bus assigned to route successfully:', data);
+      setError(null);
+      return { success: true, data };
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to assign bus ${assignmentData.busId} to route ${assignmentData.routeId}`;
+      
+      console.error('Failed to assign bus to route:', errorMessage);
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Fetch all assignments for a specific bus
+   */
+  const fetchBusAssignments = useCallback(async (busId: string): Promise<BusAssignmentFrontendData[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const assignments = await apiGetBusAssignments(busId);
+      setError(null);
+      return assignments;
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to fetch assignments for bus ${busId}`;
+      
+      console.error(errorMessage);
+      setError(errorMessage);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Update an existing bus assignment
+   */
+  const updateBusAssignment = useCallback(
+    async (assignmentId: string, assignmentData: Partial<BusAssignmentFrontendData>): Promise<AssignmentResult> => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const data = await apiUpdateBusAssignment(assignmentId, assignmentData);
+        console.log('Bus assignment updated successfully:', data);
+        setError(null);
+        return { success: true, data };
+      } catch (error) {
+        const errorMessage = error instanceof Error 
+          ? error.message 
+          : `Failed to update bus assignment ${assignmentId}`;
+        
+        console.error('Failed to update bus assignment:', errorMessage);
+        setError(errorMessage);
+        return { success: false, error: errorMessage };
+      } finally {
+        setIsLoading(false);
+      }
+    }, 
+  []);
+
+  /**
+   * Delete a bus assignment
+   */
+  const deleteBusAssignment = useCallback(async (assignmentId: string): Promise<BusResult> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      await apiDeleteBusAssignment(assignmentId);
+      console.log('Bus assignment deleted successfully');
+      setError(null);
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to delete bus assignment ${assignmentId}`;
+      
+      console.error('Failed to delete bus assignment:', errorMessage);
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   /**
    * Clear any bus management errors
@@ -201,6 +326,10 @@ export const BusProvider: React.FC<BusProviderProps> = ({ children }) => {
     addBus,
     editBus,
     removeBus,
+    assignBusToRoute,
+    fetchBusAssignments,
+    updateBusAssignment,
+    deleteBusAssignment,
     clearError
   };
 
