@@ -19,7 +19,7 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
 }) => {
   // Form state
   const [stopName, setStopName] = useState('');
-  const [travelTime, setTravelTime] = useState<number | ''>(0);
+  const [travelTime, setTravelTime] = useState('');
   const [timetable, setTimetable] = useState<string[]>([]);
   const [tempTime, setTempTime] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<{ lat: number | null, lng: number | null }>({
@@ -34,12 +34,12 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
   const { addRouteStop } = useRoute();
   
   // Add time to the timetable
-  const handleAddTime = () => {
-    if (tempTime && !timetable.includes(tempTime)) {
-      setTimetable([...timetable, tempTime]);
-      setTempTime('');
-    }
-  };
+  // const handleAddTime = () => {
+  //   if (tempTime && !timetable.includes(tempTime)) {
+  //     setTimetable([...timetable, tempTime]);
+  //     setTempTime('');
+  //   }
+  // };
   
   // Remove time from the timetable
   const handleRemoveTime = (timeToRemove: string) => {
@@ -83,7 +83,7 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
         longitude: selectedLocation.lng,
         stop_order: 0, // Will be set by backend
         timetable: timetable,
-        travel_time: typeof travelTime === 'number' ? travelTime : parseInt(String(travelTime)),
+        travel_time: String(typeof travelTime === 'number' ? travelTime : parseInt(String(travelTime))),
         landmark_description: landmarkDescription,
       };
       
@@ -95,8 +95,6 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
         // Call onSuccess callback with the new stop data
         onSuccess(result.data as RouteStop);
         onClose();
-      } else {
-        setError(result.error || 'Failed to add stop');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -121,7 +119,7 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
           value={stopName}
           onChange={(e) => setStopName(e.target.value)}
           placeholder="Enter stop name"
-          required
+          // required
         />
       </div>
       
@@ -144,12 +142,13 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
         </label>
         <Input
           id="travelTime"
-          type="number"
-          min="0"
+          type="text"
           value={travelTime}
-          onChange={(e) => setTravelTime(e.target.value ? parseInt(e.target.value) : '')}
+          onChange={(e) => {
+            setTravelTime(e.target.value);
+          }}
           placeholder="Time from previous stop"
-          required
+          // required
         />
         <p className="text-xs text-gray-500 mt-2">
           Estimated time to reach this stop from the previous stop

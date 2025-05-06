@@ -74,6 +74,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       const routes = await getRoutes(params);
       console.log('Fetched routes:', routes);
       setRoutes(routes);
+      setError(null);
       return routes;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch routes';
@@ -89,11 +90,14 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
    */
   const fetchRoute = useCallback(async (id: string): Promise<RouteFrontendData | null> => {
     setIsLoading(true);
+    // Clear error at the beginning of the request
     setError(null);
     
     try {
       const route = await getRouteById(id);
       console.log('Fetched route:', route);
+      
+      // Set route data
       setCurrentRoute(route);
       
       if (route?.stops && Array.isArray(route.stops)) {
@@ -103,9 +107,13 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         setRouteStops([]);
       }
       
+      // Explicitly clear error state after a successful request
+      setError(null);
+      
       return route;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to fetch route ${id}`;
+      console.error(`Error fetching route ${id}:`, errorMessage);
       setError(errorMessage);
       return null;
     } finally {
@@ -123,6 +131,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     try {
       const data = await createRoute(routeData);
       setRoutes(prevRoutes => [...prevRoutes, data]);
+      setError(null);
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to add route';
@@ -155,6 +164,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         }
       }
       
+      setError(null);
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to update route ${id}`;
@@ -182,6 +192,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         setRouteStops([]);
       }
       
+      setError(null);
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to remove route ${id}`;
@@ -211,6 +222,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         } : null);
       }
       
+      setError(null);
       return { success: true, data };
     } catch (error) {
       console.error('Error adding stop:', error);
@@ -242,6 +254,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         } : null);
       }
       
+      setError(null);
       return { success: true, data };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to update stop ${stopId}`;
@@ -272,6 +285,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         } : null);
       }
       
+      setError(null);
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to remove stop ${stopId}`;
@@ -302,6 +316,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         }
       }
       
+      setError(null);
       return { success: true };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to reorder stops for route ${routeId}`;
