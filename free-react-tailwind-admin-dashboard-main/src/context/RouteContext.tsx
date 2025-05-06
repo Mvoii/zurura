@@ -201,6 +201,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     
     try {
       const data = await addRouteStop(routeId, stopData);
+      console.log(data)
       setRouteStops(prevStops => [...prevStops, data]);
       
       if (currentRoute?.id === routeId) {
@@ -212,6 +213,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       
       return { success: true, data };
     } catch (error) {
+      console.error('Error adding stop:', error);
       const errorMessage = error instanceof Error ? error.message : `Failed to add stop to route ${routeId}`;
       setError(errorMessage);
       return { success: false, error: errorMessage };

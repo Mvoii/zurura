@@ -292,6 +292,7 @@ export const RouteForm: React.FC<RouteFormProps> = ({
               </Button>
               <Button
                 // onClick={handleSubmit}
+                type="submit"
                 disabled={isLoading}
                 className="flex items-center justify-center"
               >

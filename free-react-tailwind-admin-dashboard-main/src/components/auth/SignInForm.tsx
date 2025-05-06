@@ -127,7 +127,7 @@ export default function SignInForm() {
                 <Button
                   className="w-full"
                   size="sm"
-                  // type="submit"
+                  type="submit"
                   disabled={isLoading}
                 >
                   {isLoading ? "Signing in..." : "Sign in"}
