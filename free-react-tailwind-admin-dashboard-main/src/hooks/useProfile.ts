@@ -1,78 +1,48 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { profileApi, UpdateProfileRequest } from '@/lib/api/profile';
-import { toast } from 'sonner';
-import { ApiError, ApiResponse } from '@/lib/api';
-import { User } from '@/types/user';
-import { useEffect, useState } from 'react';
+import { useContext } from 'react';
+import ProfileContext from '../context/ProfileContext';
+import { UserProfile, UpdateProfilePayload } from '../api/profileService';
 
-// Helper function to safely access localStorage
-const getToken = () => {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
+// Operation result types (copied from ProfileContext for export)
+export interface ProfileOperationResult {
+  success: boolean;
+  data?: UserProfile;
+  error?: string;
+}
+
+export interface PhotoUploadOperationResult {
+  success: boolean;
+  data?: { message: string; url: string };
+  error?: string;
+}
+
+// Define the hook's return type
+export interface UseProfileReturn {
+  // State
+  profile: UserProfile | null;
+  isLoadingProfile: boolean;
+  isUpdatingProfile: boolean;
+  isUploadingPhoto: boolean;
+  error: string | null;
+  
+  // Methods
+  fetchProfile: () => Promise<ProfileOperationResult>;
+  updateUserProfile: (data: UpdateProfilePayload) => Promise<ProfileOperationResult>;
+  uploadUserPhoto: (file: File) => Promise<PhotoUploadOperationResult>;
+  clearProfileError: () => void;
+}
+
+/**
+ * Custom hook to access profile functionality throughout the app
+ * @returns Profile state and methods
+ */
+const useProfile = (): UseProfileReturn => {
+  const context = useContext(ProfileContext);
+  
+  if (context === undefined) {
+    throw new Error('useProfile must be used within a ProfileProvider');
   }
-  return null;
+  
+  return context;
 };
 
-export const useProfile = () => {
-  const queryClient = useQueryClient();
-  const [isClient, setIsClient] = useState(false);
-  
-  // Set isClient to true once the component mounts (client-side only)
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
-  // Get user profile data
-  const { 
-    data: profile, 
-    isLoading: isLoadingProfile,
-    error
-  } = useQuery<ApiResponse<User>, ApiError, User>({
-    queryKey: ['profile'],
-    queryFn: profileApi.getProfile,
-    enabled: isClient && !!getToken(),
-    select: (data) => data.data,
-    retry: 1,
-    gcTime: 5 * 60 * 1000, // 5 minutes
-    staleTime: 2 * 60 * 1000, // 2 minutes
-  });
-
-  // Update profile mutation
-  const updateProfileMutation = useMutation<ApiResponse<User>, ApiError, UpdateProfileRequest>({
-    mutationFn: profileApi.updateProfile,
-    onSuccess: () => {
-      // Invalidate profile query to refetch with updated data
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      toast.success('Profile updated successfully');
-    },
-    onError: (error: ApiError) => {
-      toast.error(error.message || 'Failed to update profile');
-    }
-  });
-
-  // Upload profile photo mutation
-  const uploadPhotoMutation = useMutation<ApiResponse<{ url: string }>, ApiError, File>({
-    mutationFn: profileApi.uploadPhoto,
-    onSuccess: (data) => {
-      // Update the profile with the new photo URL
-      if (profile) {
-        updateProfileMutation.mutate({ 
-          profile_photo_url: data.data.url 
-        });
-      }
-      toast.success('Profile photo uploaded successfully');
-    },
-    onError: (error: ApiError) => {
-      toast.error(error.message || 'Failed to upload photo');
-    }
-  });
-
-  return {
-    profile,
-    isLoadingProfile,
-    updateProfile: updateProfileMutation.mutate,
-    isUpdatingProfile: updateProfileMutation.isPending,
-    uploadPhoto: uploadPhotoMutation.mutate,
-    isUploadingPhoto: uploadPhotoMutation.isPending,
-  };
-};
+export default useProfile;
