@@ -98,6 +98,8 @@ func OperatorAuthRequired(db *sql.DB) gin.HandlerFunc {
 
 		// Check if request was aborted by the auth middleware
 		if c.IsAborted() {
+			log.Printf("[Error] Request aborted in auth middleware: %s", c.Errors.String())
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Request aborted in auth middleware"})
 			return
 		}
 

@@ -649,3 +649,67 @@ func (h *OperatorHandler) GetBusAssignments(c *gin.Context) {
 
 	c.JSON(http.StatusOK, assignments)
 }
+
+func (h *OperatorHandler) GetBusDetails(c *gin.Context) {
+	BusID := c.Param("bus_id")
+	if _, err := uuid.Parse(BusID); err != nil {
+		log.Printf("[ERROR] Bus ID is invalid")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid bus ID format"})
+		return
+	}
+
+	log.Printf("[INFO] Fetching bus details for ID: %s", BusID)
+
+	var bus models.Bus
+	err := h.db.QueryRow(`
+		SELECT
+			id, operator_id, registration_plate, capacity, bus_photo_url, status, current_occupancy, created_at, updated_at
+		FROM buses
+		WHERE id = $1
+	`, BusID).Scan(
+		&bus.ID,
+		&bus.OperatorID,
+		&bus.RegistrationPlate,
+		&bus.Capacity,
+		&bus.BusPhotoURL,
+		&bus.Status,
+		&bus.CurrentOccupancy,
+		&bus.CreatedAt,
+		&bus.UpdatedAt,
+	)
+
+	if err != nil {
+		log.Printf("[error] database error: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retreive bus details"})
+		return
+	}
+	log.Printf("[INFO] Bus details fetched successfully: %v", bus)
+
+	/*
+		row.Scan(
+			&bus.ID,
+			&bus.RegistrationPlate,
+			&bus.Capacity,
+			&bus.BusPhotoURL,
+		) */
+
+	// include assignment details if available
+	var assignment struct {
+		RouteID   string    `json:"route_id"`
+		StartDate time.Time `json:"start_date"`
+		EndDate   time.Time `json:"end_date"`
+	}
+
+	h.db.QueryRow(`
+		SELECT route_id, start_date, end_date
+		FROM bus_route_assignments
+		WHERE bus_id = $1 AND status = 'active'
+		LIMIT 1
+	`, BusID).Scan(&assignment.RouteID, &assignment.StartDate, &assignment.EndDate)
+
+
+	c.JSON(http.StatusOK, gin.H{
+		"bus": bus,
+		"current_assignment": assignment,
+	})
+}

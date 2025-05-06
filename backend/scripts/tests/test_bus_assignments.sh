@@ -53,7 +53,7 @@ ROUTE_RESPONSE=$(curl -s -X POST http://localhost:8080/a/v1/op/routes \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "route_name": "CBD to Westlands",
+    "route_name": "CBD to ksl Road",
     "description": "Main commuter route"
   }')
 
@@ -63,13 +63,34 @@ if [ "$ROUTE_ID" = "null" ] || [ -z "$ROUTE_ID" ]; then
 fi
 echo "Created route with ID: $ROUTE_ID"
 
+# Create a stop to route
+echo "test route stop creation"
+STOP_RESPONSE=$(curl -X POST http://localhost:8080/a/v1/op/$ROUTE_ID/stops \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "stop_id":      "stop_456",
+    "timetable":    ["07:00", "12:00", "18:00"],
+    "travel_time":  15,
+    "name":         "Test Stop",
+    "latitude":    -1.2921,
+    "longitude":    36.8219
+  }'
+)
+STOP_ID=$(echo "$STOP_RESPONSE" | jq -r '.id')
+if [ "$STOP_ID" = "null" ] || [ -z "$STOP_ID" ]; then
+    handle_error "Failed to create stop" "$STOP_RESPONSE"
+fi
+echo "Created stop with ID: $STOP_ID"
+
+
 # Add a bus
 echo "Adding a bus..."
 BUS_RESPONSE=$(curl -s -X POST http://localhost:8080/a/v1/op/buses \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "registration_plate": "KAA 123G",
+    "registration_plate": "KAK 123O",
     "capacity": 45,
     "bus_photo_url": "https://example.com/bus1.jpg"
   }')
@@ -80,6 +101,7 @@ if [ "$BUS_ID" = "null" ] || [ -z "$BUS_ID" ]; then
 fi
 echo "Added bus with ID: $BUS_ID"
 
+echo "listing buses"
 # Assign bus to route
 echo "Assigning bus to route..."
 ASSIGNMENT_RESPONSE=$(curl -s -X POST http://localhost:8080/a/v1/op/buses/$BUS_ID/assign \
@@ -157,4 +179,15 @@ INVALID_UPDATE_RESPONSE=$(curl -s -X PUT http://localhost:8080/a/v1/op/buses/ass
 echo "Invalid update response:"
 echo "$INVALID_UPDATE_RESPONSE" | jq '.'
 
+echo "list operator routes"
+curl -H "Authorization: Bearer $TOKEN" \
+  -s -X GET http://localhost:8080/a/v1/routes
+
+echo -e "list operator buses"
+curl -s -X GET http://localhost:8080/a/v1/op/buses -H "Authorization: Bearer $TOKEN" \
+
 echo -e "\nAll tests completed!"
+
+curl -H "Authorization: Bearer $TOKEN" \
+  -s -X GET http://localhost:8080/a/v1/routes/$ROUTE_ID
+

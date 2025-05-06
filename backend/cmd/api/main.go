@@ -92,6 +92,8 @@ func main() {
 			public.POST("/auth/register/op", authHandler.RegisterOperator)
 
 			public.GET("/schedules", scheduleHandler.ListSchedules)
+
+			public.GET("/bus/:bus_id", operatorHandler.GetBusDetails)
 		}
 
 		// protected routes
