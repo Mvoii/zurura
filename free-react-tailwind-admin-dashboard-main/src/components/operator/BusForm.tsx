@@ -267,6 +267,7 @@ export const BusForm: React.FC<BusFormProps> = ({
               </Button>
               <Button
                 // Don't add type="submit" - Form's onSubmit handler will take care of this
+                type="submit"
                 disabled={isLoading}
                 className="flex items-center justify-center"
               >
