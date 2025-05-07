@@ -2,8 +2,8 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"time"
 
@@ -16,17 +16,16 @@ import (
 	"github.com/Mvoii/zurura/internal/services/tracking"
 
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 	"github.com/joho/godotenv"
 )
 
-var Upgrader = websocket.Upgrader{
+/* var Upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		return true // Allow all origins, change for prod
 	},
-}
+} */
 
 func main() {
 	if err := godotenv.Load(); err != nil {
@@ -58,7 +57,6 @@ func main() {
 	}()
 
 	// start broadcasting
-	
 
 	r := gin.Default()
 
@@ -86,6 +84,9 @@ func main() {
 
 	/// go routine to start broadcasting for websockets
 	go notificationHandler.StartBroadcasting()
+
+	// start background notification service processing
+	go notificationService.ProcessNotifications()
 
 	/// [MOCK]
 	/// Initialize with mock payment service
@@ -169,6 +170,14 @@ func main() {
 		{
 			publicRoutes.GET("/:route_id", routeHandler.GetRouteDetails)
 			publicRoutes.GET("", routeHandler.FindRoutes)
+			publicRoutes.GET("/:route_id/buses", routeHandler.GetBusesOnRoute)                             // get buses on route
+			publicRoutes.GET("/nearby-buses", routeHandler.GetNearbyBusesbyStop) // get nearby buses by stop, random 3 buses nearby
+			publicRoutes.GET("/search-route", routeHandler.GetRouteByName)
+
+		}
+
+		for _, ri := range r.Routes() {
+			fmt.Printf("METHOD: %s\tPATH: %s\n", ri.Method, ri.Path)
 		}
 
 		// Health check

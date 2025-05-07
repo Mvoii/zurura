@@ -55,7 +55,7 @@ func NewNotificationService(db *sql.DB, handler *handlers.NotificationHandler) *
 		emailQueue:          make(chan EmailMessage, 100),
 		notificationHandler: handler,
 	}
-	go ns.processNotifications()
+	go ns.ProcessNotifications()
 	return ns
 }
 
@@ -138,11 +138,11 @@ func (s *NotificationService) Send(userID string, msgType models.NotificationTyp
 	return nil
 }
 
-func (s *NotificationService) processNotifications() {
+func (s *NotificationService) ProcessNotifications() {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[ERROR] Recovered from panic in Notification processing failed: %v", r)
-			go s.processNotifications()
+			go s.ProcessNotifications()
 		}
 	}()
 

@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/Mvoii/zurura/cmd/api/main"
 	"github.com/Mvoii/zurura/internal/models"
+	websockets "github.com/Mvoii/zurura/internal/ws"
 	"github.com/gin-gonic/gin"
 
 	// "golang.org/x/net/websocket"
@@ -46,7 +46,7 @@ func (h *NotificationHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 
-	conn, err := main.Upgrader.Upgrade(c.Writer, c.Request, nil)
+	conn, err := websockets.Upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		log.Printf("Failed to upgrade connection: %v", err)
 		return
@@ -297,4 +297,8 @@ func (h *NotificationHandler) StartBroadcasting() {
 			}
 		}
 	}
+}
+
+func (h *NotificationHandler) QueueBroadcastNotification(notification models.Notification) {
+	h.broadcast <- notification
 }
