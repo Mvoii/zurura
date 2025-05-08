@@ -9,8 +9,14 @@ import {
 /**
  * Permission types for different resource operations
  */
-export type ResourceType = 'route' | 'booking' | 'vehicle' | 'stop' | 'assignment';
+export type ResourceType = 'route' | 'booking' | 'vehicle' | 'stop' | 'assignment' | 'schedule';
 export type OperationType = 'view' | 'create' | 'update' | 'delete';
+
+// Define a type for public resource/operation pairs
+type PublicAccess = {
+  resource: ResourceType;
+  operation: OperationType;
+}
 
 /**
  * Access control hook that centralizes all permission checks
@@ -19,10 +25,30 @@ export type OperationType = 'view' | 'create' | 'update' | 'delete';
 export const useAccess = () => {
   const { isAuthenticated, user } = useAuth();
   
+  // Define which resource operations are publicly accessible (no auth required)
+  const publicAccessList: PublicAccess[] = [
+    { resource: 'route', operation: 'view' },
+    { resource: 'schedule', operation: 'view' }, // Make schedule viewing public
+    { resource: 'stop', operation: 'view' }
+  ];
+  
+  // Helper to check if a resource/operation pair is publicly accessible
+  const isPublicAccess = (operation: OperationType, resource: ResourceType): boolean => {
+    return publicAccessList.some(
+      access => access.resource === resource && access.operation === operation
+    );
+  };
+  
   /**
    * Check if current user can perform operation on resource
    */
   const can = (operation: OperationType, resource: ResourceType): boolean => {
+    // Check if this is a public resource/operation first
+    if (isPublicAccess(operation, resource)) {
+      return true;
+    }
+    
+    // If not public, require authentication
     if (!isAuthenticated) return false;
 
     // Role-based permissions matrix
@@ -32,28 +58,32 @@ export const useAccess = () => {
         booking: ['view'],
         vehicle: ['view', 'create', 'update', 'delete'],
         stop: ['view', 'create', 'update', 'delete'],
-        assignment: ['view', 'create', 'update', 'delete'] // Added assignment permissions
+        assignment: ['view', 'create', 'update', 'delete'],
+        schedule: ['view', 'create', 'update', 'delete'] // Full access to schedules
       },
       driver: {
         route: ['view'],
         booking: ['view', 'update'],
         vehicle: ['view'],
         stop: ['view'],
-        assignment: ['view'] // Added assignment permissions
+        assignment: ['view'],
+        schedule: ['view'] // Only view access
       },
       commuter: {
         route: ['view'],
         booking: ['view', 'create'],
         vehicle: ['view'],
         stop: ['view'],
-        assignment: ['view'] // Added assignment permissions
+        assignment: ['view'],
+        schedule: ['view'] // Only view access
       },
       admin: {
         route: ['view', 'create', 'update', 'delete'],
         booking: ['view', 'create', 'update', 'delete'],
         vehicle: ['view', 'create', 'update', 'delete'],
         stop: ['view', 'create', 'update', 'delete'],
-        assignment: ['view', 'create', 'update', 'delete'] // Added assignment permissions
+        assignment: ['view', 'create', 'update', 'delete'],
+        schedule: ['view', 'create', 'update', 'delete'] // Full access
       }
     };
 
@@ -67,10 +97,18 @@ export const useAccess = () => {
   return {
     // Resource-specific permissions
     routes: {
-      canView: isAuthenticated,
-      canCreate: isOperator(),
-      canEdit: isOperator(),
-      canDelete: isOperator()
+      canView: true, // Public access
+      canCreate: isAuthenticated && isOperator(),
+      canEdit: isAuthenticated && isOperator(),
+      canDelete: isAuthenticated && isOperator()
+    },
+    
+    // Schedule-specific permissions
+    schedules: {
+      canView: true, // Public access
+      canCreate: isAuthenticated && isOperator(),
+      canEdit: isAuthenticated && isOperator(),
+      canDelete: isAuthenticated && isOperator()
     },
     
     // Generic permission checker
