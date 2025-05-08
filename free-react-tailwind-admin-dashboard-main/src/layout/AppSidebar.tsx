@@ -65,6 +65,11 @@ const commuterNavItems: NavItem[] = [
     path: "/routes",
   },
   {
+    icon: <Calendar size={20} />,
+    name: "Schedules",
+    path: "/schedules",
+  },
+  {
     icon: <Ticket size={20} />,
     name: "My Bookings",
     path: "/bookings",
@@ -103,7 +108,6 @@ const operatorNavItems: NavItem[] = [
     name: "Schedule",
     subItems: [
       { name: "View Schedules", path: "/operator/schedules", pro: false },
-      { name: "Create Schedule", path: "/operator/schedules/new", pro: false },
     ],
   },
   {
@@ -156,6 +160,11 @@ const unauthenticatedItems: NavItem[] = [
       { name: "Sign In", path: "/auth/signin", pro: false },
       { name: "Sign Up", path: "/auth/signup", pro: false },
     ],
+  },
+  {
+    icon: <Calendar size={20} />,
+    name: "Schedules",
+    path: "/schedules",
   },
 ];
 
