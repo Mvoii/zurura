@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- enum types for status fields
 CREATE TYPE payment_status AS ENUM ('pending', 'completed', 'failed', 'refunded');
-CREATE TYPE payment_method AS ENUM ('mpesa', 'airtel_money', 'cash', 'bus_pass');
+CREATE TYPE payment_method AS ENUM ('mpesa', 'airtel_money', 'cash', 'bus_pass', 'card');
 CREATE TYPE booking_status AS ENUM ('pending', 'confirmed', 'cancelled', 'completed');
 CREATE TYPE pass_type AS ENUM ('prepaid', 'subscription');
 CREATE TYPE pass_status AS ENUM ('active', 'expired', 'suspended');

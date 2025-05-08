@@ -29,10 +29,12 @@ func NewBookingService(db *sql.DB, ps payments.PaymentService) *BookingService {
 }
 
 type CreateBookingRequest struct {
-	BusID         string
-	SeatNumbers   []string
-	PaymentMethod payments.PaymentMethod
-	UserID        string
+	BusID             string
+	BoardingStopName  string
+	AlightingStopName string
+	SeatNumbers       []string
+	PaymentMethod     payments.PaymentMethod
+	UserID            string
 }
 
 func (s *BookingService) CreateBooking(ctx context.Context, req CreateBookingRequest) (*models.Booking, error) {
@@ -304,23 +306,50 @@ func (s *BookingService) createBookingRecord(ctx context.Context, tx *sql.Tx, re
 		return nil, fmt.Errorf("failed to get route_id: %w", err)
 	}
 
+	// Resolve boarding and alighting stops
+	BoardingStopID, _, _, _, err := s.resolvesStop(ctx, tx, routeID, req.BoardingStopName)
+	if err != nil {
+		log.Printf("[ERROR] Failed to resolve boarding stop: %v", err)
+		return nil, err
+	}
+	AlightingStopID, _, _, _, err := s.resolvesStop(ctx, tx, routeID, req.AlightingStopName)
+	if err != nil {
+		log.Printf("[ERROR] Failed to resolve alighting stop: %v", err)
+		return nil, err
+	}
+
+	// prep uuid params: nil if empty, or the real uuid string if not empty
+	var boardingIDParam interface{}
+	if BoardingStopID != "" {
+		boardingIDParam = BoardingStopID
+	}
+	var alightIDParam interface{}
+	if BoardingStopID != "" {
+		alightIDParam = AlightingStopID
+	}
+
 	// Create booking record with JSONB data - remove updated_at
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO bookings (
-			id, user_id, bus_id, route_id, seats, fare, payment_method,
-			status, created_at, expires_at
-		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			id, user_id, bus_id, route_id, boarding_stop_id, alighting_stop_id, seats, fare, payment_method,
+			status, created_at, expires_at, boarding_stop_name, alighting_stop_name
+		) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 	`,
 		bookingID,
 		req.UserID,
 		req.BusID,
 		routeID,
+		boardingIDParam,
+		alightIDParam,
 		seatsJSON,
 		fare,
 		payment.PaymentMethod,
 		"confirmed",
 		now,
 		now.Add(15*time.Minute),
+		req.BoardingStopName,
+		req.AlightingStopName,
+		// updated_at is not needed here
 	)
 
 	if err != nil {
@@ -334,19 +363,19 @@ func (s *BookingService) createBookingRecord(ctx context.Context, tx *sql.Tx, re
 		"seat_count":   len(req.SeatNumbers),
 		"route_id":     routeID,
 	}
-	
+
 	metadataJSON, err := json.Marshal(paymentMetadata)
 	if err != nil {
 		log.Printf("[ERROR] Failed to marshal metadata to JSON: %v", err)
 		return nil, fmt.Errorf("failed to marshal metadata to JSON: %w", err)
 	}
-	
+
 	// Handle bus_pass_id - either use the value from payment or NULL
 	var busPassID interface{} = nil
 	if payment.BusPassID != "" {
 		busPassID = payment.BusPassID
 	}
-	
+
 	_, err = tx.ExecContext(ctx, `
 		INSERT INTO payments (
 			id, booking_id, user_id, amount, payment_method, payment_status,
@@ -377,11 +406,15 @@ func (s *BookingService) createBookingRecord(ctx context.Context, tx *sql.Tx, re
 		UserID:    req.UserID,
 		BusID:     req.BusID,
 		RouteID:   routeID,
+		BoardingStopID:  BoardingStopID,
+		AlightingStopID: AlightingStopID,
+		BoardingStopName:  req.BoardingStopName,
+		AlightingStopName: req.AlightingStopName,
 		Seats:     seats,
 		Fare:      fare,
 		Status:    "confirmed",
 		CreatedAt: now,
-		ExpiresAt: now.Add(15*time.Minute),
+		ExpiresAt: now.Add(15 * time.Minute),
 	}, nil
 }
 
@@ -549,4 +582,51 @@ func (s *BookingService) processRefund(ctx context.Context, tx *sql.Tx, paymentI
 	}
 
 	return nil
+}
+
+func (s *BookingService) resolvesStop(ctx context.Context, tx *sql.Tx, routeID, stopName string) (stopID, name string, lat, lng *float64, err error) {
+	// real stops
+	const q1 = `
+		SELECT bs.id, bs.name, bs.latitude, bs.longitude
+		FROM route_bus_stops rbs
+		JOIN bus_stops bs ON rbs.bus_stop_id = bs.id
+		WHERE rbs.route_id = $1
+		AND bs.name ILIKE '%' || $2 || '%'
+		LIMIT 1
+	`
+	var rawLat, rawLng sql.NullFloat64
+	if scanErr := tx.QueryRowContext(ctx, q1, routeID, stopName).Scan(&stopID, &name, &rawLat, &rawLng); scanErr == nil {
+		if rawLat.Valid {
+			lat = &rawLat.Float64
+		}
+		if rawLng.Valid {
+			lng = &rawLng.Float64
+		}
+
+		return stopID, name, lat, lng, nil
+	}
+
+	// virtual origin or destination
+	const q2 = `
+		SELECT origin AS name, NULL::float8 AS latitude, NULL::float8 AS longitude
+			FROM bus_routes
+		WHERE id = $1
+			AND LOWER(origin) = LOWER($2)
+		UNION
+		SELECT destination AS name, NULL::float8 AS latitude, NULL::float8 AS longitude
+			FROM bus_routes
+		WHERE id = $1
+			AND LOWER(destination) = LOWER($2)
+		LIMIT 1
+	`
+	if scanErr := tx.QueryRowContext(ctx, q2, routeID, stopName).Scan(&name, &rawLat, &rawLng); scanErr == nil {
+		// no real id, leave stop id empty
+		return "", name, nil, nil, nil
+	}
+
+	log.Printf("[ERROR] Stop not found: %s", stopName)
+	return "", "", nil, nil, &errors.BookingError{
+		Code:    "Invalid_STOP",
+		Message: fmt.Sprintf("Stop %s not found on this route", stopName),
+	}
 }

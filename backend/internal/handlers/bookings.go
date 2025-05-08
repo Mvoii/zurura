@@ -38,9 +38,11 @@ type SeatMap struct {
 
 func (h *BookingHandler) CreateBooking(c *gin.Context) {
 	var req struct {
-		BusID         string   `json:"bus_id" binding:"required"`
-		Seats         SeatMap  `json:"seats" binding:"required"`
-		PaymentMethod string   `json:"payment_method" binding:"required"`
+		BusID             string  `json:"bus_id" binding:"required"`
+		BoardingStopName  string  `json:"boarding_stop_name" binding:"required"`
+		AlightingStopName string  `json:"alighting_stop_name" binding:"required"`
+		Seats             SeatMap `json:"seats"`
+		PaymentMethod     string  `json:"payment_method" binding:"required"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -48,10 +50,10 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 		return
 	}
 
-    if len(req.Seats.SeatNumbers) != req.Seats.Count {
-        c.JSON(http.StatusBadRequest, gin.H{"error": "Seat count does not match number of seats provided"})
-        return
-    }
+	if len(req.Seats.SeatNumbers) != req.Seats.Count {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Seat count does not match number of seats provided"})
+		return
+	}
 
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -60,10 +62,12 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 	}
 
 	bookingReq := booking.CreateBookingRequest{
-		BusID:         req.BusID,
-		SeatNumbers:   req.Seats.SeatNumbers,
-		PaymentMethod: payments.PaymentMethod(req.PaymentMethod),
-		UserID:        userID.(string),
+		BusID:             req.BusID,
+		BoardingStopName:  req.BoardingStopName,
+		AlightingStopName: req.AlightingStopName,
+		SeatNumbers:       req.Seats.SeatNumbers,
+		PaymentMethod:     payments.PaymentMethod(req.PaymentMethod),
+		UserID:            userID.(string),
 	}
 
 	booking, err := h.bookingService.CreateBooking(c.Request.Context(), bookingReq)
@@ -89,7 +93,7 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 			}
 		default:
 			log.Printf("[ERROR] Booking error: %v", err)
-			// Check if the error message contains "zero amount payment" 
+			// Check if the error message contains "zero amount payment"
 			if err.Error() == "zero amount payment not allowed" {
 				c.JSON(http.StatusBadRequest, gin.H{
 					"error": "Payment validation failed: Zero fare amount. The route fare may not be properly configured.",
@@ -150,28 +154,20 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 
 	// Query to get all user bookings with basic info
 	query := `
-		SELECT 
-			b.id, 
-			b.user_id, 
-			b.bus_id, 
-			b.route_id,
-			b.seats,
-			b.fare, 
-			b.status, 
-			b.created_at, 
-			b.expires_at,
-			COALESCE(b.boarded_at, '0001-01-01 00:00:00'::timestamp) as boarded_at,
-			r.route_name,
-			r.origin,
-			r.destination
-		FROM 
-			bookings b
-		LEFT JOIN
-			bus_routes r ON b.route_id = r.id
-		WHERE 
-			b.user_id = $1
-		ORDER BY 
-			b.created_at DESC
+		SELECT
+		   b.id, b.user_id, b.bus_id, b.route_id,
+		   b.boarding_stop_id, b.alighting_stop_id,
+		   b.seats, b.fare, b.status,
+		   b.created_at, b.expires_at, b.boarded_at,
+		   r.route_name, r.origin, r.destination,
+		   bs1.name AS boarding_name, bs1.latitude AS boarding_lat, bs1.longitude AS boarding_lng,
+		   bs2.name AS alighting_name, bs2.latitude AS alighting_lat, bs2.longitude AS alighting_lng
+		FROM bookings b
+		LEFT JOIN bus_routes r  ON b.route_id = r.id
+		LEFT JOIN bus_stops bs1 ON b.boarding_stop_id  = bs1.id
+		LEFT JOIN bus_stops bs2 ON b.alighting_stop_id = bs2.id
+		WHERE b.user_id = $1
+		ORDER BY b.created_at DESC
 	`
 
 	rows, err := h.db.Query(query, userID)
@@ -185,19 +181,27 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 	var bookings []gin.H
 	for rows.Next() {
 		var (
-			id          string
-			userID      string
-			busID       string
-			routeID     string
-			seatData    []byte // JSON data for seats
-			fare        float64
-			status      string
-			createdAt   time.Time
-			expiresAt   time.Time
-			boardedAt   time.Time
-			routeName   sql.NullString
-			origin      sql.NullString
-			destination sql.NullString
+			id            string
+			userID        string
+			busID         string
+			routeID       string
+			boardStopID   sql.NullString
+			boardingName  sql.NullString
+			alightStopID  sql.NullString
+			alightingName sql.NullString
+			boardLat      sql.NullFloat64
+			boardLng      sql.NullFloat64
+			alightLat     sql.NullFloat64
+			alightLng     sql.NullFloat64
+			seatData      []byte // JSON data for seats
+			fare          float64
+			status        string
+			createdAt     time.Time
+			expiresAt     time.Time
+			boardedAt     time.Time
+			routeName     sql.NullString
+			origin        sql.NullString
+			destination   sql.NullString
 		)
 
 		err := rows.Scan(
@@ -205,6 +209,8 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 			&userID,
 			&busID,
 			&routeID,
+			&boardStopID,
+			&alightStopID,
 			&seatData,
 			&fare,
 			&status,
@@ -214,6 +220,12 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 			&routeName,
 			&origin,
 			&destination,
+			&boardingName,
+			&boardLat,
+			&boardLng,
+			&alightingName,
+			&alightLat,
+			&alightLng,
 		)
 
 		if err != nil {
@@ -237,6 +249,23 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 			destStr = destination.String
 		}
 
+		boarding := gin.H{"name": boardingName.String}
+		if boardStopID.Valid {
+			boarding["id"] = boardStopID.String
+			boarding["location"] = gin.H{
+				"latitude": boardLat.Float64,
+				"longitude": boardLng.Float64,
+			}
+		}
+		alighting := gin.H{"name": alightingName.String}
+		if alightStopID.Valid {
+			alighting["id"] = alightStopID.String
+			alighting["location"] = gin.H{
+				"latitude": alightLat.Float64,
+				"longitude": alightLng.Float64,
+			}
+		}
+
 		booking := gin.H{
 			"id":          id,
 			"user_id":     userID,
@@ -251,6 +280,8 @@ func (h *BookingHandler) GetUserBookings(c *gin.Context) {
 			"route_name":  routeNameStr,
 			"origin":      originStr,
 			"destination": destStr,
+			"boarding_stop": boarding,
+			"alighting_stop": alighting,
 		}
 
 		bookings = append(bookings, booking)
