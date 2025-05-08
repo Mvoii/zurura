@@ -26,6 +26,8 @@ import FindRoutesPage from "./pages/Commuter/FindRoutesPage";
 import RouteDetailsPage from "./pages/Commuter/RouteDetailsPage";
 import ManageRouteStopsPage from "./pages/Operator/ManageRouteStopsPage";
 import ManageAssignmentsPage from "./pages/Operator/ManageAssignmentsPage";
+import SchedulesPage from "./pages/Commuter/SchedulesPage";
+import ManageSchedulesPage from "./pages/Operator/ManageSchedulesPage"; // Add this import
 
 // Import AppProvider instead of all individual providers
 import AppProvider from "./context/AppProvider";
@@ -52,7 +54,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/routes" element={<FindRoutesPage />} />
             <Route path="/routes/:routeId" element={<RouteDetailsPage />} />
-            <Route path="/schedules" element={<div>Schedules List</div>} />
+            <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/tracking/:busId" element={<div>Bus Tracking Page</div>} />
             <Route path="/tracking/nearby" element={<div>Nearby Buses Page</div>} />
 
@@ -77,6 +79,7 @@ export default function App() {
               <Route path="/operator/buses/:assignmentId/edit" element={<div>Bus Assign Form</div>} />
               <Route path="/operator/buses/new" element={<div>Bus Form</div>} />
               <Route path="/operator/drivers" element={<div>Drivers</div>} />
+              <Route path="/operator/schedules" element={<ManageSchedulesPage />} /> {/* Add this route */}
               <Route path="/operator/schedules/new" element={<div>Schedule Form</div>} />
             </Route>
 
