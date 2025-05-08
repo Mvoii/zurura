@@ -1,6 +1,12 @@
 import { useContext } from 'react';
 import RouteContext from '../context/RouteContext';
-import type { RouteFrontendData, RouteStop, StopOrder, RouteSearchParams } from '../api/routeService';
+import type { 
+  RouteFrontendData, 
+  RouteStop, 
+  StopOrder, 
+  RouteSearchParams,
+  RouteSearchResponse // Add this import
+} from '../api/routeService';
 
 /**
  * Interface for the result of route operations
@@ -21,10 +27,12 @@ export interface UseRouteReturn {
   routeStops: RouteStop[];
   isLoading: boolean;
   error: string | null;
+  searchedRoute: RouteSearchResponse | null; // Add this state
   
   // Route operations with updated fetchRoutes signature
   fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
+  fetchRouteByName: (routeName: string) => Promise<RouteSearchResponse | null>; // Add this function
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
   removeRoute: (id: string) => Promise<RouteResult>;

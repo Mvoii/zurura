@@ -121,7 +121,7 @@ const RouteDetailsPage: React.FC = () => {
         <h1 className="text-2xl font-bold mb-6">Route Details</h1>
       </div>
       
-      <RouteCard route={routeData} className="mb-6" />
+      {/* <RouteCard route={routeData} className="mb-6" /> */}
       
       <ComponentCard title="Route Stops" className="mb-6">
         {isLoading && (

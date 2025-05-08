@@ -28,6 +28,7 @@ import ManageRouteStopsPage from "./pages/Operator/ManageRouteStopsPage";
 import ManageAssignmentsPage from "./pages/Operator/ManageAssignmentsPage";
 import SchedulesPage from "./pages/Commuter/SchedulesPage";
 import ManageSchedulesPage from "./pages/Operator/ManageSchedulesPage"; // Add this import
+import FindRouteByNamePage from "./pages/Commuter/FindRouteByNamePage";
 
 // Import AppProvider instead of all individual providers
 import AppProvider from "./context/AppProvider";
@@ -52,7 +53,7 @@ export default function App() {
           <Route element={<AppLayout />}>
             {/* === Public Routes === */}
             <Route path="/" element={<Home />} />
-            <Route path="/routes" element={<FindRoutesPage />} />
+            <Route path="/routes" element={<FindRouteByNamePage />} />
             <Route path="/routes/:routeId" element={<RouteDetailsPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/tracking/:busId" element={<div>Bus Tracking Page</div>} />

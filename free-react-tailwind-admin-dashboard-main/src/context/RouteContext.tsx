@@ -9,10 +9,12 @@ import {
   updateRouteStop,
   deleteRouteStop,
   reorderRouteStops,
+  getRouteByName, // Import the new function
   RouteFrontendData,
   RouteStop,
   StopOrder,
-  RouteSearchParams
+  RouteSearchParams,
+  RouteSearchResponse // Import the new type
 } from '../api/routeService';
 
 // Operation result type
@@ -29,9 +31,11 @@ interface RouteContextType {
   routeStops: RouteStop[];
   isLoading: boolean;
   error: string | null;
+  searchedRoute: RouteSearchResponse | null; // New state for searched route
   
   fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
+  fetchRouteByName: (routeName: string) => Promise<RouteSearchResponse | null>; // New function
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
   removeRoute: (id: string) => Promise<RouteResult>;
@@ -62,6 +66,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
   const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchedRoute, setSearchedRoute] = useState<RouteSearchResponse | null>(null); // New state
 
   /**
    * Fetch all available routes with optional filtering
@@ -114,6 +119,29 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to fetch route ${id}`;
       console.error(`Error fetching route ${id}:`, errorMessage);
+      setError(errorMessage);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Fetch a route by name
+   */
+  const fetchRouteByName = useCallback(async (routeName: string): Promise<RouteSearchResponse | null> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const routeData = await getRouteByName(routeName);
+      console.log('Fetched route by name:', routeData);
+      setSearchedRoute(routeData);
+      setError(null);
+      return routeData;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : `Failed to fetch route by name: ${routeName}`;
+      console.error(`Error fetching route by name ${routeName}:`, errorMessage);
       setError(errorMessage);
       return null;
     } finally {
@@ -348,8 +376,10 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     routeStops,
     isLoading,
     error,
+    searchedRoute, // Expose the new state
     fetchRoutes,
     fetchRoute,
+    fetchRouteByName, // Expose the new function
     addRoute,
     editRoute,
     removeRoute,

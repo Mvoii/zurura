@@ -95,6 +95,21 @@ export interface RouteSearchParams {
   offset?: number;
 }
 
+// Add this new interface for the response from GetRouteByName
+export interface RouteSearchResponse {
+  route: {
+    id: string;
+    route_name: string;
+    description: string;
+    origin: string;
+    destination: string;
+    created_at: string;
+    updated_at: string;
+    base_fare: number;
+  };
+  stops: BackendRouteStop[];
+}
+
 /**
  * Map frontend route object to backend format
  */
@@ -404,6 +419,19 @@ export const reorderRouteStops = async (routeId: string, stopsOrder: StopOrder[]
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to reorder stops';
     console.error(`Failed to reorder stops for route ${routeId}:`, errorMessage);
+    throw error;
+  }
+};
+
+/**
+ * Get route by name
+ */
+export const getRouteByName = async (routeName: string): Promise<RouteSearchResponse> => {
+  try {
+    const response = await apiClient.get<RouteSearchResponse>(`/routes/search-route?route_name=${encodeURIComponent(routeName)}`);
+    return response;
+  } catch (error) {
+    console.error('Failed to fetch route by name:', error);
     throw error;
   }
 };
