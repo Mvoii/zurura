@@ -34,6 +34,7 @@
     "react-dropzone": "^14.3.5",
     "react-helmet-async": "^2.0.5",
     "react-leaflet": "^5.0.0",
+    "react-qr-code": "^2.0.15",
     "react-router": "^7.1.5",
     "react-router-dom": "^7.5.0",
     "react-toastify": "^11.0.5",
