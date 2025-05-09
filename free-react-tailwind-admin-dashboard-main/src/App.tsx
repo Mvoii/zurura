@@ -22,13 +22,19 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import RouteList from "./components/operator/RouteList";
 import { isAuthenticated, getCurrentUser, isOperator } from './utils/token';
 import BusList from "./components/operator/BusList";
-import FindRoutesPage from "./pages/Commuter/FindRoutesPage";
+// import FindRoutesPage from "./pages/Commuter/FindRoutesPage";
 import RouteDetailsPage from "./pages/Commuter/RouteDetailsPage";
 import ManageRouteStopsPage from "./pages/Operator/ManageRouteStopsPage";
 import ManageAssignmentsPage from "./pages/Operator/ManageAssignmentsPage";
 import SchedulesPage from "./pages/Commuter/SchedulesPage";
-import ManageSchedulesPage from "./pages/Operator/ManageSchedulesPage"; // Add this import
-import FindRouteByNamePage from "./pages/Commuter/FindRouteByNamePage";
+import ManageSchedulesPage from "./pages/Operator/ManageSchedulesPage";
+import RoutesPage from "./pages/Commuter/RoutesPage";
+import NearbyBusesPage from "./pages/Commuter/NearbyBusesPage";
+import BookingConfirmationPage from "./pages/Commuter/BookingConfirmationPage";
+import BookingSuccessPage from "./pages/Commuter/BookingSuccessPage";
+import MyBookingsPage from "./pages/Commuter/MyBookingsPage";
+import CommuterDashboardPage from "./pages/Dashboard/CommuterDashboardPage";
+import OperatorDashboardPage from "./pages/Dashboard/OperatorDashboardPage";
 
 // Import AppProvider instead of all individual providers
 import AppProvider from "./context/AppProvider";
@@ -53,23 +59,27 @@ export default function App() {
           <Route element={<AppLayout />}>
             {/* === Public Routes === */}
             <Route path="/" element={<Home />} />
-            <Route path="/routes" element={<FindRouteByNamePage />} />
+            <Route path="/routes" element={<RoutesPage />} />
             <Route path="/routes/:routeId" element={<RouteDetailsPage />} />
             <Route path="/schedules" element={<SchedulesPage />} />
             <Route path="/tracking/:busId" element={<div>Bus Tracking Page</div>} />
-            <Route path="/tracking/nearby" element={<div>Nearby Buses Page</div>} />
+            <Route path="/buses/nearby" element={<NearbyBusesPage />} />
+            
+            {/* Booking Routes */}
+            <Route path="/booking/confirm" element={<BookingConfirmationPage />} />
+            <Route path="/booking/success/:bookingId" element={<BookingSuccessPage />} />
 
             {/* === Authenticated Routes === */}
             {/* Commuter */}
             <Route element={<ProtectedRoute requiredRole="commuter" />}>
-              <Route path="/dashboard" element={<div>Commuter Dashboard</div>} />
-              <Route path="/bookings" element={<div>My Bookings</div>} />
+              <Route path="/dashboard" element={<CommuterDashboardPage />} />
+              <Route path="/bookings" element={<MyBookingsPage />} />
               <Route path="/history" element={<div>Trip History</div>} />
             </Route>
 
             {/* Operator */}
             <Route element={<ProtectedRoute requiredRole="operator" />}>
-              <Route path="/operator/dashboard" element={<div>Operator Dashboard</div>} />
+              <Route path="/operator/dashboard" element={<OperatorDashboardPage />} />
               <Route path="/operator/routes" element={<RouteList showOperatorControls={true} />} />
               <Route path="/operator/routes/new" element={<div>Route Form</div>} />
               <Route path="/operator/routes/:routeId/stops" element={<ManageRouteStopsPage />} />
@@ -80,7 +90,7 @@ export default function App() {
               <Route path="/operator/buses/:assignmentId/edit" element={<div>Bus Assign Form</div>} />
               <Route path="/operator/buses/new" element={<div>Bus Form</div>} />
               <Route path="/operator/drivers" element={<div>Drivers</div>} />
-              <Route path="/operator/schedules" element={<ManageSchedulesPage />} /> {/* Add this route */}
+              <Route path="/operator/schedules" element={<ManageSchedulesPage />} />
               <Route path="/operator/schedules/new" element={<div>Schedule Form</div>} />
             </Route>
 
