@@ -45,11 +45,11 @@ const commonNavItems: NavItem[] = [
     name: "Profile",
     path: "/profile",
   },
-  {
-    icon: <Settings size={20} />,
-    name: "Settings",
-    path: "/settings",
-  },
+  // {
+  //   icon: <Settings size={20} />,
+  //   name: "Settings",
+  //   path: "/settings",
+  // },
 ];
 
 // Define Commuter-specific navigation items
@@ -64,26 +64,26 @@ const commuterNavItems: NavItem[] = [
     name: "Find Routes",
     path: "/routes",
   },
-  {
-    icon: <Calendar size={20} />,
-    name: "Schedules",
-    path: "/schedules",
-  },
+  // {
+  //   icon: <Calendar size={20} />,
+  //   name: "Schedules",
+  //   path: "/schedules",
+  // },
   {
     icon: <Ticket size={20} />,
     name: "My Bookings",
     path: "/bookings",
   },
-  {
-    icon: <History size={20} />,
-    name: "Trip History",
-    path: "/history",
-  },
-  {
-    icon: <Navigation size={20} />,
-    name: "Live Tracking",
-    path: "/tracking/nearby",
-  },
+  // {
+  //   icon: <History size={20} />,
+  //   name: "Trip History",
+  //   path: "/history",
+  // },
+  // {
+  //   icon: <Navigation size={20} />,
+  //   name: "Live Tracking",
+  //   path: "/tracking/nearby",
+  // },
 ];
 
 // Define Operator-specific navigation items
@@ -103,23 +103,23 @@ const operatorNavItems: NavItem[] = [
     name: "Buses",
     path: "/operator/buses",
   },
-  {
-    icon: <Calendar size={20} />,
-    name: "Schedule",
-    subItems: [
-      { name: "View Schedules", path: "/operator/schedules", pro: false },
-    ],
-  },
-  {
-    icon: <Users size={20} />,
-    name: "Drivers",
-    path: "/operator/drivers",
-  },
-  {
-    icon: <MapPin size={20} />,
-    name: "Stops",
-    path: "/operator/stops",
-  },
+  // {
+  //   icon: <Calendar size={20} />,
+  //   name: "Schedule",
+  //   subItems: [
+  //     { name: "View Schedules", path: "/operator/schedules", pro: false },
+  //   ],
+  // },
+  // {
+  //   icon: <Users size={20} />,
+  //   name: "Drivers",
+  //   path: "/operator/drivers",
+  // },
+  // {
+  //   icon: <MapPin size={20} />,
+  //   name: "Stops",
+  //   path: "/operator/stops",
+  // },
 ];
 
 // Define Driver-specific navigation items
@@ -161,11 +161,11 @@ const unauthenticatedItems: NavItem[] = [
       { name: "Sign Up", path: "/auth/signup", pro: false },
     ],
   },
-  {
-    icon: <Calendar size={20} />,
-    name: "Schedules",
-    path: "/schedules",
-  },
+  // {
+  //   icon: <Calendar size={20} />,
+  //   name: "Schedules",
+  //   path: "/schedules",
+  // },
 ];
 
 const AppSidebar: React.FC = () => {
