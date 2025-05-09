@@ -33,6 +33,7 @@ type CreateBookingRequest struct {
 	BoardingStopName  string
 	AlightingStopName string
 	SeatNumbers       []string
+	SeatCount         int
 	PaymentMethod     payments.PaymentMethod
 	UserID            string
 }
@@ -45,12 +46,12 @@ func (s *BookingService) CreateBooking(ctx context.Context, req CreateBookingReq
 	defer tx.Rollback()
 
 	// 1. Validate seat availability
-	if err := s.validateSeatAvailability(ctx, tx, req.BusID, req.SeatNumbers); err != nil {
+	/* if err := s.validateSeatAvailability(ctx, tx, req.BusID, req.SeatNumbers); err != nil {
 		return nil, err
-	}
+	} */
 
 	// 2. Calculate fare
-	fare, err := s.calculateFare(ctx, tx, req.BusID, len(req.SeatNumbers))
+	fare, err := s.calculateFare(ctx, tx, req.BusID, req.SeatCount)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +80,7 @@ func (s *BookingService) CreateBooking(ctx context.Context, req CreateBookingReq
 	return booking, nil
 }
 
-func (s *BookingService) validateSeatAvailability(ctx context.Context, tx *sql.Tx, busID string, seatNumbers []string) error {
+/* func (s *BookingService) validateSeatAvailability(ctx context.Context, tx *sql.Tx, busID string, seatNumbers []string) error {
 	// First check if the bus exists and get its capacity
 	var capacity int
 	err := tx.QueryRowContext(ctx, `
@@ -148,7 +149,7 @@ func (s *BookingService) validateSeatAvailability(ctx context.Context, tx *sql.T
 
 	return nil
 }
-
+ */
 func (s *BookingService) calculateFare(ctx context.Context, tx *sql.Tx, busID string, seatCount int) (float64, error) {
 	// Get base fare from bus route using the bus_route_assignments table
 	var baseFare float64
@@ -283,7 +284,7 @@ func (s *BookingService) createBookingRecord(ctx context.Context, tx *sql.Tx, re
 
 	seats := models.SeatMap{
 		SeatNumbers: req.SeatNumbers,
-		Count:       len(req.SeatNumbers),
+		Count:       req.SeatCount,
 	}
 
 	// Convert seats struct to JSON for PostgreSQL JSONB column
@@ -402,19 +403,19 @@ func (s *BookingService) createBookingRecord(ctx context.Context, tx *sql.Tx, re
 	}
 
 	return &models.Booking{
-		ID:        bookingID,
-		UserID:    req.UserID,
-		BusID:     req.BusID,
-		RouteID:   routeID,
-		BoardingStopID:  BoardingStopID,
-		AlightingStopID: AlightingStopID,
+		ID:                bookingID,
+		UserID:            req.UserID,
+		BusID:             req.BusID,
+		RouteID:           routeID,
+		BoardingStopID:    BoardingStopID,
+		AlightingStopID:   AlightingStopID,
 		BoardingStopName:  req.BoardingStopName,
 		AlightingStopName: req.AlightingStopName,
-		Seats:     seats,
-		Fare:      fare,
-		Status:    "confirmed",
-		CreatedAt: now,
-		ExpiresAt: now.Add(15 * time.Minute),
+		Seats:             seats,
+		Fare:              fare,
+		Status:            "confirmed",
+		CreatedAt:         now,
+		ExpiresAt:         now.Add(15 * time.Minute),
 	}, nil
 }
 

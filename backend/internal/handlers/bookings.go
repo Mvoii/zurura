@@ -32,7 +32,7 @@ func NewBookingHandler(db *sql.DB, bs *booking.BookingService) *BookingHandler {
 }
 
 type SeatMap struct {
-	SeatNumbers []string `json:"seat_numbers" binding:"required"`
+	SeatNumbers []string `json:"seat_numbers"`
 	Count       int      `json:"count" binding:"required"`
 }
 
@@ -50,10 +50,10 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 		return
 	}
 
-	if len(req.Seats.SeatNumbers) != req.Seats.Count {
+	/* if len(req.Seats.SeatNumbers) != req.Seats.Count {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Seat count does not match number of seats provided"})
 		return
-	}
+	} */
 
 	userID, exists := c.Get("user_id")
 	if !exists {
@@ -65,7 +65,8 @@ func (h *BookingHandler) CreateBooking(c *gin.Context) {
 		BusID:             req.BusID,
 		BoardingStopName:  req.BoardingStopName,
 		AlightingStopName: req.AlightingStopName,
-		SeatNumbers:       req.Seats.SeatNumbers,
+		// SeatNumbers:       req.Seats.SeatNumbers,
+		SeatCount:         req.Seats.Count,
 		PaymentMethod:     payments.PaymentMethod(req.PaymentMethod),
 		UserID:            userID.(string),
 	}
