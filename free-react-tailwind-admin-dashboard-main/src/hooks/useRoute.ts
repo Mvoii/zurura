@@ -5,7 +5,9 @@ import type {
   RouteStop, 
   StopOrder, 
   RouteSearchParams,
-  RouteSearchResponse // Add this import
+  RouteSearchResponse,
+  BusOnRoute,
+  NearbyBus // Add this import
 } from '../api/routeService';
 
 /**
@@ -27,12 +29,16 @@ export interface UseRouteReturn {
   routeStops: RouteStop[];
   isLoading: boolean;
   error: string | null;
-  searchedRoute: RouteSearchResponse | null; // Add this state
+  searchedRoute: RouteSearchResponse | null;
+  busesOnRoute: BusOnRoute[]; // Add this state
+  nearbyBuses: NearbyBus[]; // Add this state
   
-  // Route operations with updated fetchRoutes signature
+  // Route operations
   fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
-  fetchRouteByName: (routeName: string) => Promise<RouteSearchResponse | null>; // Add this function
+  fetchRouteByName: (routeName: string) => Promise<RouteSearchResponse | null>;
+  fetchBusesOnRoute: (routeId: string) => Promise<BusOnRoute[]>; // Add this function
+  fetchNearbyBuses: (routeId: string, boardingStopName: string) => Promise<NearbyBus[]>; // Add this function
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
   removeRoute: (id: string) => Promise<RouteResult>;

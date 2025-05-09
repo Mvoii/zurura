@@ -9,12 +9,16 @@ import {
   updateRouteStop,
   deleteRouteStop,
   reorderRouteStops,
-  getRouteByName, // Import the new function
+  getRouteByName,
+  getBusesOnRoute,
+  getNearbyBusesByBoardingStop, // Import the new function
   RouteFrontendData,
   RouteStop,
   StopOrder,
   RouteSearchParams,
-  RouteSearchResponse // Import the new type
+  RouteSearchResponse,
+  BusOnRoute,
+  NearbyBus // Import the new type
 } from '../api/routeService';
 
 // Operation result type
@@ -31,11 +35,15 @@ interface RouteContextType {
   routeStops: RouteStop[];
   isLoading: boolean;
   error: string | null;
-  searchedRoute: RouteSearchResponse | null; // New state for searched route
+  searchedRoute: RouteSearchResponse | null;
+  busesOnRoute: BusOnRoute[];
+  nearbyBuses: NearbyBus[]; // New state for nearby buses
   
   fetchRoutes: (params?: RouteSearchParams) => Promise<RouteFrontendData[]>;
   fetchRoute: (id: string) => Promise<RouteFrontendData | null>;
-  fetchRouteByName: (routeName: string) => Promise<RouteSearchResponse | null>; // New function
+  fetchRouteByName: (routeName: string) => Promise<RouteSearchResponse | null>;
+  fetchBusesOnRoute: (routeId: string) => Promise<BusOnRoute[]>;
+  fetchNearbyBuses: (routeId: string, boardingStopName: string) => Promise<NearbyBus[]>; // New function
   addRoute: (routeData: RouteFrontendData) => Promise<RouteResult>;
   editRoute: (id: string, routeData: RouteFrontendData) => Promise<RouteResult>;
   removeRoute: (id: string) => Promise<RouteResult>;
@@ -66,7 +74,9 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
   const [routeStops, setRouteStops] = useState<RouteStop[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchedRoute, setSearchedRoute] = useState<RouteSearchResponse | null>(null); // New state
+  const [searchedRoute, setSearchedRoute] = useState<RouteSearchResponse | null>(null);
+  const [busesOnRoute, setBusesOnRoute] = useState<BusOnRoute[]>([]);
+  const [nearbyBuses, setNearbyBuses] = useState<NearbyBus[]>([]); // New state
 
   /**
    * Fetch all available routes with optional filtering
@@ -95,14 +105,12 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
    */
   const fetchRoute = useCallback(async (id: string): Promise<RouteFrontendData | null> => {
     setIsLoading(true);
-    // Clear error at the beginning of the request
     setError(null);
     
     try {
       const route = await getRouteById(id);
       console.log('Fetched route:', route);
       
-      // Set route data
       setCurrentRoute(route);
       
       if (route?.stops && Array.isArray(route.stops)) {
@@ -112,9 +120,7 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
         setRouteStops([]);
       }
       
-      // Explicitly clear error state after a successful request
       setError(null);
-      
       return route;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : `Failed to fetch route ${id}`;
@@ -144,6 +150,57 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
       console.error(`Error fetching route by name ${routeName}:`, errorMessage);
       setError(errorMessage);
       return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Fetch all buses assigned to a specific route
+   */
+  const fetchBusesOnRoute = useCallback(async (routeId: string): Promise<BusOnRoute[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const buses = await getBusesOnRoute(routeId);
+      console.log('Fetched buses for route:', buses);
+      setBusesOnRoute(buses);
+      setError(null);
+      return buses;
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to fetch buses for route ${routeId}`;
+      console.error(`Error fetching buses for route ${routeId}:`, errorMessage);
+      setError(errorMessage);
+      return [];
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  /**
+   * Fetch nearby buses for a specific boarding stop on a route
+   */
+  const fetchNearbyBuses = useCallback(async (
+    routeId: string,
+    boardingStopName: string
+  ): Promise<NearbyBus[]> => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const buses = await getNearbyBusesByBoardingStop(routeId, boardingStopName);
+      setNearbyBuses(buses);
+      return buses;
+    } catch (error) {
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : `Failed to fetch nearby buses for stop ${boardingStopName}`;
+      console.error(errorMessage);
+      setError(errorMessage);
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -376,10 +433,14 @@ export const RouteProvider: React.FC<RouteProviderProps> = ({ children }) => {
     routeStops,
     isLoading,
     error,
-    searchedRoute, // Expose the new state
+    searchedRoute,
+    busesOnRoute,
+    nearbyBuses, // Expose the new state
     fetchRoutes,
     fetchRoute,
-    fetchRouteByName, // Expose the new function
+    fetchRouteByName,
+    fetchBusesOnRoute,
+    fetchNearbyBuses, // Expose the new function
     addRoute,
     editRoute,
     removeRoute,
