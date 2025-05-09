@@ -5,7 +5,8 @@ import { SidebarProvider } from './SidebarContext';
 import { BusProvider } from './BusContext';
 import { RouteProvider } from './RouteContext';
 import { ProfileProvider } from './ProfileContext';
-import { ScheduleProvider } from './ScheduleContext'; // Import ScheduleProvider
+import { ScheduleProvider } from './ScheduleContext';
+import { BookingProvider } from './BookingContext'; // Add this import
 
 interface AppProviderProps {
   children: ReactNode;
@@ -23,8 +24,10 @@ const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
           <SidebarProvider>
             <RouteProvider>
               <BusProvider>
-                <ScheduleProvider> {/* Add ScheduleProvider here */}
-                  {children}
+                <ScheduleProvider>
+                  <BookingProvider> {/* Add BookingProvider here */}
+                    {children}
+                  </BookingProvider>
                 </ScheduleProvider>
               </BusProvider>
             </RouteProvider>
