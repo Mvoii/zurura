@@ -10,7 +10,7 @@ import {
  * Permission types for different resource operations
  */
 export type ResourceType = 'route' | 'booking' | 'vehicle' | 'stop' | 'assignment' | 'schedule';
-export type OperationType = 'view' | 'create' | 'update' | 'delete';
+export type OperationType = 'view' | 'create' | 'update' | 'delete' | 'cancel';
 
 // Define a type for public resource/operation pairs
 type PublicAccess = {
@@ -28,7 +28,7 @@ export const useAccess = () => {
   // Define which resource operations are publicly accessible (no auth required)
   const publicAccessList: PublicAccess[] = [
     { resource: 'route', operation: 'view' },
-    { resource: 'schedule', operation: 'view' }, // Make schedule viewing public
+    { resource: 'schedule', operation: 'view' },
     { resource: 'stop', operation: 'view' }
   ];
   
@@ -55,35 +55,35 @@ export const useAccess = () => {
     const permissions: Record<string, Record<ResourceType, OperationType[]>> = {
       operator: {
         route: ['view', 'create', 'update', 'delete'],
-        booking: ['view'],
+        booking: ['view'], // Operators can only view bookings
         vehicle: ['view', 'create', 'update', 'delete'],
         stop: ['view', 'create', 'update', 'delete'],
         assignment: ['view', 'create', 'update', 'delete'],
-        schedule: ['view', 'create', 'update', 'delete'] // Full access to schedules
+        schedule: ['view', 'create', 'update', 'delete']
       },
       driver: {
         route: ['view'],
-        booking: ['view', 'update'],
+        booking: ['view'], // Drivers can only view bookings
         vehicle: ['view'],
         stop: ['view'],
         assignment: ['view'],
-        schedule: ['view'] // Only view access
+        schedule: ['view']
       },
       commuter: {
         route: ['view'],
-        booking: ['view', 'create'],
+        booking: ['view', 'create', 'cancel'], // Commuters can create and cancel bookings
         vehicle: ['view'],
         stop: ['view'],
         assignment: ['view'],
-        schedule: ['view'] // Only view access
+        schedule: ['view']
       },
       admin: {
         route: ['view', 'create', 'update', 'delete'],
-        booking: ['view', 'create', 'update', 'delete'],
+        booking: ['view', 'create', 'cancel'], // Admins can view, create and cancel bookings
         vehicle: ['view', 'create', 'update', 'delete'],
         stop: ['view', 'create', 'update', 'delete'],
         assignment: ['view', 'create', 'update', 'delete'],
-        schedule: ['view', 'create', 'update', 'delete'] // Full access
+        schedule: ['view', 'create', 'update', 'delete']
       }
     };
 
@@ -93,6 +93,9 @@ export const useAccess = () => {
     // Check if role has permission for operation on resource
     return permissions[role]?.[resource]?.includes(operation) || false;
   };
+
+  // Helper for booking-specific permissions
+  const canManageBookings = isAuthenticated && isCommuter();
 
   return {
     // Resource-specific permissions
@@ -109,6 +112,13 @@ export const useAccess = () => {
       canCreate: isAuthenticated && isOperator(),
       canEdit: isAuthenticated && isOperator(),
       canDelete: isAuthenticated && isOperator()
+    },
+    
+    // Booking-specific permissions
+    bookings: {
+      canView: isAuthenticated,
+      canCreate: canManageBookings,
+      canCancel: canManageBookings
     },
     
     // Generic permission checker
