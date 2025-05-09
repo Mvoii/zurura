@@ -13,14 +13,12 @@ import type { RouteFrontendData } from "../../api/routeService";
 const RouteList = ({ showOperatorControls = true }) => {
   const navigate = useNavigate();
   const { routes, isLoading, error, fetchRoutes, removeRoute } = useRoute();
-  const { routes: routeAccess, can } = useAccess(); // Use the access hook
+  const { routes: routeAccess, can, isOperator } = useAccess();
 
-  // State for route management (remains the same)
   const [isAddRouteOpen, setIsAddRouteOpen] = useState(false);
   const [editingRoute, setEditingRoute] = useState<RouteFrontendData | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState<string | null>(null);
 
-  // State for table functionality (remains the same)
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
@@ -31,36 +29,39 @@ const RouteList = ({ showOperatorControls = true }) => {
     fetchRoutes();
   }, [fetchRoutes]);
 
-  // Handle opening the form for adding a new route
+  const handleRowClick = (routeId: string) => {
+    if (isOperator) {
+      navigate(`/operator/routes/${routeId}/stops`);
+    } else {
+      navigate(`/routes/${routeId}`);
+    }
+  };
+
   const handleAdd = () => {
-    if (!routeAccess.canCreate) return; // Guard against unauthorized access
-    setEditingRoute(null); // Ensure we are not in edit mode
+    if (!routeAccess.canCreate) return;
+    setEditingRoute(null);
     setIsAddRouteOpen(true);
   };
 
-  // Handle opening the form for editing an existing route
   const handleEdit = (route: RouteFrontendData) => {
-    if (!routeAccess.canEdit) return; // Guard against unauthorized access
-    setEditingRoute(route); // Set the route to be edited
-    setIsAddRouteOpen(true); // Open the modal
+    if (!routeAccess.canEdit) return;
+    setEditingRoute(route);
+    setIsAddRouteOpen(true);
   };
 
-  // Handle route deletion
   const handleDelete = async (id: string) => {
-    if (!routeAccess.canDelete) return; // Guard against unauthorized access
+    if (!routeAccess.canDelete) return;
     const result = await removeRoute(id);
     if (result.success) {
       setShowConfirmDelete(null);
     }
   };
 
-  // Handle form modal closing
   const handleAddRouteClose = () => {
     setIsAddRouteOpen(false);
-    setEditingRoute(null); // Clear editing state on close
+    setEditingRoute(null);
   };
 
-  // Sorting and filtering logic remains the same...
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -101,7 +102,6 @@ const RouteList = ({ showOperatorControls = true }) => {
 
   const renderSortIcon = (field: string) => {
     if (sortField !== field) return null;
-
     return sortDirection === "asc" ? (
       <span className="ml-1">↑</span>
     ) : (
@@ -113,7 +113,6 @@ const RouteList = ({ showOperatorControls = true }) => {
     <>
       <ComponentCard title="Route Management" className="mb-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-6">
-          {/* Search input remains the same */}
           <div className="relative w-full md:w-64 mb-4 md:mb-0">
             <input
               type="text"
@@ -127,11 +126,9 @@ const RouteList = ({ showOperatorControls = true }) => {
             />
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
-
-          {/* Show Add Route button only if allowed and controls are enabled */}
           {showOperatorControls && routeAccess.canCreate && (
             <Button
-              onClick={handleAdd} // Use handleAdd to ensure editingRoute is null
+              onClick={handleAdd}
               className="flex items-center gap-2"
             >
               <Plus size={16} />
@@ -140,7 +137,6 @@ const RouteList = ({ showOperatorControls = true }) => {
           )}
         </div>
 
-        {/* Loading, error, empty states remain the same */}
         {isLoading ? (
           <div className="p-8 flex justify-center">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -215,6 +211,7 @@ const RouteList = ({ showOperatorControls = true }) => {
                         Created {renderSortIcon("created_at")}
                       </div>
                     </TableCell>
+                    {/* Actions column header */}
                     <TableCell isHeader className="text-right">
                       Actions
                     </TableCell>
@@ -222,7 +219,7 @@ const RouteList = ({ showOperatorControls = true }) => {
                 </TableHeader>
                 <TableBody>
                   {currentRoutes.map((route) => (
-                    <TableRow key={route.id}>
+                    <TableRow>
                       <TableCell className="font-medium">
                         {route.route_name}
                       </TableCell>
@@ -238,50 +235,50 @@ const RouteList = ({ showOperatorControls = true }) => {
                           ? new Date(route.created_at).toLocaleDateString()
                           : '-'}
                       </TableCell>
+                      {/* Actions cell content */}
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          {/* View Stops button */}
-                          {can("view", "stop") && (
-                            <Button
+                          <div className="flex justify-end gap-2">
+                          {/* View Details/Stops button */}
+                          {(!showOperatorControls || (showOperatorControls && can("view", "stop"))) && (
+                              <Button
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                navigate(`/routes/${route.id}/stops`)
-                              }
+                              onClick={() => route.id && handleRowClick(route.id)}
                               className="p-2"
-                            >
+                              title={showOperatorControls ? "Manage Stops" : "View Details"}
+                              >
                               <Map size={16} />
-                            </Button>
+                              </Button>
                           )}
 
-                          {/* Edit/Delete buttons */}
-                          {showOperatorControls && (
-                            <>
-                              {routeAccess.canEdit && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEdit(route)}
-                                  className="p-2"
-                                >
-                                  <Edit2 size={16} />
-                                </Button>
-                              )}
-                              {routeAccess.canDelete && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() =>
-                                    setShowConfirmDelete(route.id || "")
-                                  }
-                                  className="p-2 text-red-500 hover:text-red-700"
-                                >
-                                  <Trash2 size={16} />
-                                </Button>
-                              )}
-                            </>
+                          {/* Edit/Delete buttons only if operator controls are shown */}
+                          {showOperatorControls && routeAccess.canEdit && (
+                              <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                  handleEdit(route);
+                              }}
+                              className="p-2"
+                              title="Edit Route"
+                              >
+                              <Edit2 size={16} />
+                              </Button>
                           )}
-                        </div>
+                          {showOperatorControls && routeAccess.canDelete && (
+                              <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                  setShowConfirmDelete(route.id || "");
+                              }}
+                              className="p-2 text-red-500 hover:text-red-700"
+                              title="Delete Route"
+                              >
+                              <Trash2 size={16} />
+                              </Button>
+                          )}
+                          </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -289,7 +286,6 @@ const RouteList = ({ showOperatorControls = true }) => {
               </Table>
             </div>
 
-            {/* Pagination remains the same */}
             <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4 flex justify-between items-center">
               <div className="text-sm text-gray-500">
                 Showing {firstIndex + 1}-
@@ -325,16 +321,14 @@ const RouteList = ({ showOperatorControls = true }) => {
         )}
       </ComponentCard>
 
-      {/* Route Form Modal - Render if modal is open AND user has create OR edit permission */}
       {isAddRouteOpen && (routeAccess.canCreate || routeAccess.canEdit) && (
         <RouteForm
           isOpen={isAddRouteOpen}
           onClose={handleAddRouteClose}
-          editingRoute={editingRoute} // Pass the editingRoute state here
+          editingRoute={editingRoute}
         />
       )}
 
-      {/* Delete Confirmation Modal - Render if delete confirmation is needed AND user has delete permission */}
       {showConfirmDelete && routeAccess.canDelete && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg max-w-md w-full">
