@@ -83,7 +83,7 @@ const AddStopToRouteForm: React.FC<AddStopToRouteFormProps> = ({
         longitude: selectedLocation.lng,
         stop_order: 0, // Will be set by backend
         timetable: timetable,
-        travel_time: String(typeof travelTime === 'number' ? travelTime : parseInt(String(travelTime))),
+        travel_time: typeof travelTime === 'number' ? travelTime : parseInt(travelTime || '0'),
         landmark_description: landmarkDescription,
       };
       

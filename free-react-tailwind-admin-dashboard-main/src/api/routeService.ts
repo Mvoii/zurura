@@ -31,7 +31,7 @@ export interface BackendRouteStop {
     created_at: string;
     updated_at: string;
   };
-  travel_time: string;
+  travel_time: number;
   created_at: string;
 }
 
@@ -68,7 +68,7 @@ export interface RouteStop {
   longitude: number;
   stop_order: number;
   timetable: string[]; // Array of time strings like "08:00"
-  travel_time: string | null; // Travel time in minutes from previous stop/origin
+  travel_time: number | null; // Travel time in minutes from previous stop/origin
   // Add other stop-related fields if necessary based on actual backend implementation
   landmark_description?: string;
   created_at?: string;
