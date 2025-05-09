@@ -110,6 +110,51 @@ export interface RouteSearchResponse {
   stops: BackendRouteStop[];
 }
 
+// Add these new interfaces for the buses on route endpoint
+export interface BusOnRoute {
+  bus_id: string;
+  registration_plate: string;
+  capacity: number;
+  current_occupancy: number;
+  assignment_period: {
+    start_date: string;
+    end_date: string;
+  };
+}
+
+export interface BusesOnRouteResponse {
+  buses: BusOnRoute[];
+}
+
+// Define interfaces for nearby buses endpoint
+export interface NearbyBus {
+  bus_id: string;
+  registration_plate: string;
+  capacity: number;
+  current_occupancy: number;
+  assignment_period: {
+    start_date: string;
+    end_date: string;
+  };
+  route: {
+    id: string;
+    name: string;
+    base_fare: number;
+  };
+  stop: {
+    id: string;
+    name: string;
+    location: {
+      latitude: number;
+      longitude: number;
+    };
+  };
+}
+
+export interface NearbyBusesResponse {
+  nearby_buses: NearbyBus[];
+}
+
 /**
  * Map frontend route object to backend format
  */
@@ -432,6 +477,67 @@ export const getRouteByName = async (routeName: string): Promise<RouteSearchResp
     return response;
   } catch (error) {
     console.error('Failed to fetch route by name:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get all buses assigned to a specific route
+ * @param routeId The ID of the route to get buses for
+ * @returns Array of buses assigned to the route
+ */
+export const getBusesOnRoute = async (routeId: string): Promise<BusOnRoute[]> => {
+  try {
+    const response = await apiClient.get<BusesOnRouteResponse>(`/routes/${routeId}/buses`);
+    
+    if (!response || !response.buses) {
+      console.error('Invalid response format from getBusesOnRoute');
+      return [];
+    }
+    
+    return response.buses;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Failed to fetch buses for route ${routeId}:`, errorMessage);
+    return [];
+  }
+};
+
+/**
+ * Get nearby buses for a specific boarding stop on a route
+ * @param routeId The ID of the route
+ * @param boardingStopName The name of the boarding stop
+ * @returns Array of nearby buses
+ */
+export const getNearbyBusesByBoardingStop = async (
+  routeId: string,
+  boardingStopName: string
+): Promise<NearbyBus[]> => {
+  try {
+    // Construct query parameters
+    const queryParams = new URLSearchParams({
+      route_id: routeId,
+      stop_name: boardingStopName
+    });
+
+    // Make the API call
+    const response = await apiClient.get<NearbyBusesResponse>(
+      `/routes/nearby-buses?${queryParams.toString()}`
+    );
+
+    // Validate response
+    if (!response || !response.nearby_buses) {
+      console.error('Invalid response format from getNearbyBusesByBoardingStop');
+      return [];
+    }
+
+    return response.nearby_buses;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(
+      `Failed to fetch nearby buses for boarding stop "${boardingStopName}" on route "${routeId}":`,
+      errorMessage
+    );
     throw error;
   }
 };
